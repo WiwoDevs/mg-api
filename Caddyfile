@@ -1,0 +1,24 @@
+# DOMINIO e IPS_GHL se leen del archivo .env.
+# IPS_GHL es una lista separada por espacios, por ejemplo: "1.2.3.4 5.6.7.0/24".
+
+{$DOMINIO} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# Primera capa: lo que no viene de GHL no llega ni a la aplicacion.
+	@fueraDeLista not remote_ip {$IPS_GHL}
+	respond @fueraDeLista 403
+
+	handle /v1/* {
+		reverse_proxy mgapi:3000
+	}
+
+	# /salud queda fuera: solo se consulta desde dentro del servidor.
+	respond 404
+}

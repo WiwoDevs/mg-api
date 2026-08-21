@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+datos/
+graphify-out/
+*.log
+*.sqlite
+*.sqlite-journal

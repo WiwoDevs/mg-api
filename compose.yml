@@ -1,0 +1,50 @@
+services:
+  mgapi:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Dentro del contenedor escucha en toda la interfaz, pero la red es interna
+      # y no se publica ningun puerto: solo Caddy puede alcanzarlo.
+      HOST: 0.0.0.0
+    volumes:
+      - datos:/app/datos
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - interna
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/salud').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_datos:/data
+      - caddy_config:/config
+    networks:
+      - interna
+    depends_on:
+      - mgapi
+
+volumes:
+  datos:
+  caddy_datos:
+  caddy_config:
+
+networks:
+  interna:
+    driver: bridge
