@@ -1,0 +1,170 @@
+{
+  "proyecto": "mgAPI",
+  "proposito": "API intermediaria de reclamos de posventa MG. Recibe un reclamo desde una automatizacion de GoHighLevel (GHL), lo valida y lo limpia, y lo reenvia a Zoho. No guarda datos personales: los recibe, los entrega y los olvida.",
+  "aviso": "Archivo generado por scripts/generar-catalogo.py a partir de los Excel oficiales. No editarlo a mano.",
+
+  "flujo": [
+    "El usuario llena un formulario de reclamos.",
+    "GHL recibe el ingreso y llama a mgAPI por webhook.",
+    "mgAPI autentica el llamado, valida el formato, resuelve los valores contra el catalogo oficial de MG y traduce a los nombres de campo de Zoho.",
+    "mgAPI envia el reclamo a Zoho y devuelve a GHL un resumen filtrado.",
+    "Si Zoho no responde, el reclamo queda en una cola cifrada y se reintenta hasta entregarlo."
+  ],
+
+  "endpoints": {
+    "POST /v1/reclamos": {
+      "descripcion": "Ingreso real de reclamos. Autenticado y validado.",
+      "cabeceras": {
+        "Content-Type": "application/json (obligatorio, otro valor devuelve 415)",
+        "X-Mgapi-Key": "clave compartida con GHL (obligatorio)",
+        "X-Mgapi-Timestamp": "segundos Unix, solo si HMAC_ACTIVO=true",
+        "X-Mgapi-Firma": "HMAC-SHA256(secreto, timestamp + '.' + cuerpo crudo) en hexadecimal, solo si HMAC_ACTIVO=true"
+      },
+      "limiteCuerpo": "32 KB"
+    },
+    "POST /v1/captura": {
+      "descripcion": "Modo temporal de descubrimiento. Abierto, sin clave. Devuelve exactamente el JSON que recibio, para inspeccionar que manda GHL. Se apaga solo tras un maximo de peticiones.",
+      "activacion": "MODO_CAPTURA=true"
+    },
+    "GET /v1/capturas": {
+      "descripcion": "Devuelve las capturas guardadas con todo su detalle. Exige X-Mgapi-Key."
+    },
+    "GET /salud": {
+      "descripcion": "Estado del servicio y cantidad de reclamos en cola. Solo alcanzable desde dentro del servidor."
+    }
+  },
+
+  "payloadDesdeGhl": {
+    "explicacion": "GHL debe enviar un campo por cada variable, sin concatenar. Antes concatenaba muchas variables separadas por un caracter invisible, lo que producia valores pegados como 'MG3MG5' porque el contacto de GHL acumula respuestas de reclamos anteriores.",
+    "advertenciaNombres": "Los nombres con errores de tipeo (patente_del_vehculo, ao_del_vehculo, descripcin_del_problema, imgenes_o_respaldo, crculo_autos, nombre_convesionario) son los slugs reales de GHL y NO deben corregirse. GHL elimina los caracteres acentuados en vez de transcribirlos: 'año' produce 'ao', 'Circulo' produce 'crculo'.",
+    "plantilla": {
+      "ghl_contact_id": "{{contact.id}}",
+      "contacto": {
+        "first_name": "{{contact.first_name}}",
+        "last_name": "{{contact.last_name}}",
+        "rut": "{{contact.rut}}",
+        "phone": "{{contact.phone}}",
+        "email": "{{contact.email}}"
+      },
+      "vehiculo": {
+        "patente_del_vehculo": "{{contact.patente_del_vehculo}}",
+        "ao_del_vehculo": "{{contact.ao_del_vehculo}}",
+        "vin_del_vehculo": "{{contact.vin_del_vehculo}}",
+        "kilometraje": "{{contact.kilometraje}}",
+        "modelo_del_auto": "{{contact.modelo_del_auto}}"
+      },
+      "variante_por_modelo": {
+        "mg4": "{{contact.mg4}}",
+        "mg4_xpower": "{{contact.mg4_xpower}}",
+        "mg3": "{{contact.mg3}}",
+        "mg5": "{{contact.mg5}}",
+        "mg_hs": "{{contact.mg_hs}}",
+        "mg_gt": "{{contact.mg_gt}}",
+        "mg_zs": "{{contact.mg_zs}}",
+        "mg_zx": "{{contact.mg_zx}}",
+        "mg_one": "{{contact.mg_one}}",
+        "mg_rx5": "{{contact.mg_rx5}}",
+        "mg_rx9": "{{contact.mg_rx9}}",
+        "mg_marvel_r": "{{contact.mg_marvel_r}}",
+        "mg_zs_ev": "{{contact.mg_zs_ev}}"
+      },
+      "concesionario": {
+        "nombre_convesionario": "{{contact.nombre_convesionario}}"
+      },
+      "sucursal_por_concesionario": {
+        "antivero": "{{contact.sucursales_antivero}}",
+        "autosummit": "{{contact.sucursales_autosummit}}",
+        "bruno_fritsch": "{{contact.sucursales_bruno_fritsch}}",
+        "carmona": "{{contact.sucursales_carmona}}",
+        "cartoni": "{{contact.sucursales_cartoni}}",
+        "crculo_autos": "{{contact.sucursales_crculo_autos}}",
+        "difor": "{{contact.sucursales_difor}}",
+        "forcenter": "{{contact.sucursales_forcenter}}",
+        "fronza": "{{contact.sucursales_fronza}}",
+        "movicenter": "{{contact.sucursales_movicenter}}",
+        "pompeyo_carrasco": "{{contact.sucursales_pompeyo_carrasco}}",
+        "portillo": "{{contact.sucursales_portillo}}",
+        "salazar_israel": "{{contact.sucursales_salazar_israel}}",
+        "servimaq": "{{contact.sucursales_servimaq}}",
+        "sociedad_real": "{{contact.sucursales_sociedad_real}}"
+      },
+      "reclamo": {
+        "descripcin_del_problema": "{{contact.descripcin_del_problema}}",
+        "imgenes_o_respaldo": "{{contact.imgenes_o_respaldo}}"
+      }
+    }
+  },
+
+  "reglaDeSeleccion": {
+    "problema": "El contacto de GHL acumula historico. Si la persona ya reporto un MG3 y hoy reporta un MG4, ambos campos siguen con valor. No sirve 'tomar el unico campo lleno' porque hay varios llenos.",
+    "aclaracionClave": "modelo_del_auto es EL MODELO (MG4). Los trece campos del grupo variante_por_modelo son LA VARIANTE de su propio modelo: contact.mg4 guarda la variante del MG4. No son trece modelos alternativos.",
+    "regla": "La variante que viaja a Zoho es variante_por_modelo[slug(modelo_del_auto)]. Se selecciona POR NOMBRE del campo, no por contenido. Los demas campos se ignoran esten llenos o vacios, asi el historico acumulado deja de interferir y no hace falta ninguna regla de desempate.",
+    "reglaSucursal": "Identica para la sucursal: sucursal_por_concesionario[slug(nombre_convesionario)]. Pendiente de confirmar con el equipo.",
+    "slug": "Quitar los caracteres acentuados (no transcribirlos), pasar a minusculas, y convertir en '_' todo lo que no sea letra o numero."
+  },
+
+  "esquemaReclamoLimpio": {
+    "descripcion": "Forma que mgAPI valida despues de limpiar. Es estricta: un campo no declarado hace que la peticion se rechace con 400.",
+    "campos": {
+      "nombre": "texto, 2 a 60 caracteres",
+      "apellido": "texto, 2 a 60 caracteres",
+      "rut": "RUT chileno, validado por modulo 11. Se normaliza quitando puntos y guion",
+      "email": "formato de correo, se pasa a minusculas, maximo 200 caracteres",
+      "telefono": "8 a 20 digitos, opcionalmente con '+', espacios o guiones",
+      "vehiculo.patente": "patente chilena: AABB12, AA1234 o AAA12. Se pasa a mayusculas",
+      "vehiculo.serie": "debe existir en catalogo.modelos[].serie",
+      "vehiculo.variante": "debe existir en las variantes de esa serie",
+      "vehiculo.anio": "entero entre 1900 y el año proximo",
+      "vehiculo.vin": "opcional. 17 caracteres, sin I, O ni Q",
+      "vehiculo.kilometraje": "opcional. Entero, acepta separadores de miles y los quita",
+      "concesionario.nombre": "debe existir en catalogo.concesionarios[].nombre",
+      "concesionario.sucursal": "debe existir en las sucursales de ese concesionario",
+      "motivo": "texto, 10 a 2000 caracteres",
+      "adjuntoUrl": "opcional. URL absoluta",
+      "ghlContactId": "opcional. Identificador del contacto en GHL, maximo 120 caracteres"
+    }
+  },
+
+  "mapeoAZoho": {
+    "descripcion": "Traduccion final. Los campos opcionales ausentes se omiten en vez de enviarse vacios.",
+    "campos": {
+      "cf_first_name": "nombre",
+      "cf_last_name": "apellido",
+      "cf_id_number": "rut",
+      "cf_mobile": "telefono",
+      "email": "email",
+      "cf_license_plate": "vehiculo.patente",
+      "cf_series": "vehiculo.serie (EL MODELO, por ejemplo MG4)",
+      "cf_model": "vehiculo.variante (LA VARIANTE, por ejemplo MG 4 XPOWER)",
+      "cf_model_year": "vehiculo.anio",
+      "cf_vin": "vehiculo.vin (opcional)",
+      "cf_mileage": "vehiculo.kilometraje (opcional)",
+      "cf_website_dealer": "concesionario.nombre",
+      "cf_website_dealer_pos": "concesionario.sucursal",
+      "description": "motivo",
+      "cf_attachment_url": "adjuntoUrl (opcional)",
+      "cf_website_id": "ghlContactId (opcional)"
+    }
+  },
+
+  "respuestas": {
+    "200": "Entregado a Zoho. Devuelve estado 'recibido' y un resumen filtrado por lista blanca.",
+    "202": "Zoho no estaba disponible. El reclamo quedo en la cola cifrada y se reintenta solo. Para GHL es un exito.",
+    "400": "entrada_invalida. Incluye los nombres de campo y el motivo, nunca el valor recibido.",
+    "401": "no_autorizado. Clave ausente o incorrecta, firma invalida, o IP fuera de la allowlist.",
+    "413": "cuerpo_demasiado_grande. Sobre 32 KB.",
+    "415": "tipo_no_soportado. Content-Type distinto de application/json.",
+    "422": "reclamo_rechazado. Zoho lo rechazo de forma definitiva.",
+    "429": "demasiadas_solicitudes o presupuesto_agotado.",
+    "500": "error_interno. El detalle queda solo en los logs del servidor."
+  },
+
+  "pendientes": [
+    "Confirmar que las sucursales siguen la misma regla de seleccion que los modelos.",
+    "Confirmar la lista exacta de opciones del desplegable modelo_del_auto en GHL, para mapear cada opcion a su serie del catalogo.",
+    "Confirmar la lista exacta de opciones del desplegable nombre_convesionario en GHL.",
+    "Confirmar que campos exige Zoho de verdad, para decidir que se rechaza y que viaja incompleto.",
+    "Definir que hacer si el modelo declarado no tiene variante cargada: rechazar o enviar sin variante.",
+    "Crear en GHL los campos de las series que faltan y retirar los que sobran (ver desajustesConGhl)."
+  ]
+}

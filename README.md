@@ -8,7 +8,8 @@ reenvía a la API externa. No guarda datos personales: los recibe, los entrega y
 ```bash
 npm install
 cp .env.example .env      # completar los valores; ver docs/04-despliegue-operacion.md
-npm test                  # 13 pruebas, sin dependencias externas
+npm test                  # 46 pruebas, sin dependencias externas
+npm run catalogo          # regenera el catálogo desde los Excel de MG
 npm run dev
 ```
 
@@ -24,6 +25,7 @@ Requiere Node 24 o superior: el proyecto ejecuta TypeScript directamente, sin pa
 | [Despliegue y operación](docs/04-despliegue-operacion.md) | VPS, Docker, Caddy, rotación de secretos y respuesta a incidentes |
 | [Modos de prueba](docs/05-modos-de-prueba.md) | Modo captura para descubrir el formato de GHL, y modo sin Zoho para operar sin credenciales |
 | [Payload de GHL](docs/06-payload-ghl.md) | Qué debe enviar GHL, la regla de selección de variante y la traducción a Zoho |
+| [contrato-mgapi.json](docs/contrato-mgapi.json) | Todo lo anterior en un solo JSON, para pasárselo a otra herramienta |
 
 ## Principio
 

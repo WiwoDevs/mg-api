@@ -4,12 +4,15 @@
   "private": true,
   "description": "API intermediaria de reclamos: recibe desde GHL, reenvia a la API externa y no guarda datos personales.",
   "type": "module",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "start": "node src/server.ts",
     "dev": "node --watch src/server.ts",
     "test": "node --test test/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "catalogo": "python3 scripts/generar-catalogo.py"
   },
   "dependencies": {
     "@fastify/helmet": "^13.0.2",

@@ -1,8 +1,16 @@
 import { z } from 'zod';
+import {
+  buscarConcesionario,
+  buscarSerie,
+  buscarSucursal,
+  buscarVariante,
+} from '../catalogo/catalogo.ts';
 
 const PATENTE_CHILENA = /^([A-Z]{4}\d{2}|[A-Z]{2}\d{4}|[A-Z]{3}\d{2})$/;
 const EMAIL = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;
 const TELEFONO = /^\+?[0-9][0-9\s-]{7,19}$/;
+// El VIN no usa I, O ni Q para no confundirlas con 1 y 0.
+const VIN = /^[A-HJ-NPR-Z0-9]{17}$/;
 
 /** Quita puntos, guiones y espacios y deja el digito verificador en mayuscula. */
 export function normalizarRut(valor: string): string {
@@ -35,18 +43,25 @@ export function rutValido(rut: string): boolean {
 
 const anioActual = new Date().getFullYear();
 
+/** Numero escrito por una persona: puede traer puntos o comas de miles. */
+const enteroTolerante = z
+  .union([z.number(), z.string()])
+  .transform((valor) => (typeof valor === 'number' ? valor : Number(valor.replace(/[.,\s]/g, ''))))
+  .refine((valor) => Number.isInteger(valor) && valor >= 0, 'debe ser un numero entero');
+
 /**
- * Entrada del reclamo. Es estricta a proposito: un campo no declarado
- * es un rechazo, no un campo que se ignora en silencio.
+ * Forma y formato del reclamo ya limpio.
+ * Es estricta a proposito: un campo no declarado es un rechazo, no un campo
+ * que se ignora en silencio.
+ *
+ * La existencia real de la serie, variante, concesionario y sucursal la
+ * comprueba resolverCatalogo(), no este esquema.
  */
 export const esquemaReclamo = z
   .object({
-    nombre: z.string().trim().min(2).max(120),
-    rut: z
-      .string()
-      .trim()
-      .transform(normalizarRut)
-      .refine(rutValido, 'RUT invalido'),
+    nombre: z.string().trim().min(2).max(60),
+    apellido: z.string().trim().min(2).max(60),
+    rut: z.string().trim().transform(normalizarRut).refine(rutValido, 'RUT invalido'),
     email: z
       .string()
       .trim()
@@ -65,17 +80,94 @@ export const esquemaReclamo = z
           .toUpperCase()
           .transform((valor) => valor.replace(/[\s-]/g, ''))
           .refine((valor) => PATENTE_CHILENA.test(valor), 'patente invalida'),
-        marca: z.string().trim().min(1).max(60),
-        modelo: z.string().trim().min(1).max(60),
+        serie: z.string().trim().min(2).max(60),
+        variante: z.string().trim().min(1).max(80),
         anio: z.coerce.number().int().min(1900).max(anioActual + 1),
+        vin: z
+          .string()
+          .trim()
+          .toUpperCase()
+          .refine((valor) => VIN.test(valor), 'VIN invalido: son 17 caracteres, sin I, O ni Q')
+          .optional(),
+        kilometraje: enteroTolerante.optional(),
+      })
+      .strict(),
+    concesionario: z
+      .object({
+        nombre: z.string().trim().min(2).max(80),
+        sucursal: z.string().trim().min(2).max(80),
       })
       .strict(),
     motivo: z.string().trim().min(10).max(2000),
-    referenciaGhl: z.string().trim().max(120).optional(),
+    adjuntoUrl: z
+      .string()
+      .trim()
+      .refine((valor) => URL.canParse(valor), 'debe ser una URL absoluta')
+      .optional(),
+    ghlContactId: z.string().trim().max(120).optional(),
   })
   .strict();
 
 export type Reclamo = z.infer<typeof esquemaReclamo>;
+
+export type ErrorCampo = { campo: string; mensaje: string };
+
+export type ResultadoCatalogo =
+  | { ok: true; reclamo: Reclamo }
+  | { ok: false; errores: ErrorCampo[] };
+
+/**
+ * Comprueba serie, variante, concesionario y sucursal contra el catalogo
+ * oficial, y reemplaza lo recibido por el valor canonico.
+ *
+ * Que el valor exista en el catalogo es lo que impide que a Zoho llegue un
+ * modelo inventado o mal escrito.
+ *
+ * @param reclamo reclamo que ya paso el esquema de formato
+ */
+export function resolverCatalogo(reclamo: Reclamo): ResultadoCatalogo {
+  const errores: ErrorCampo[] = [];
+
+  const modelo = buscarSerie(reclamo.vehiculo.serie);
+  const variante = modelo ? buscarVariante(modelo, reclamo.vehiculo.variante) : undefined;
+
+  if (!modelo) {
+    errores.push({ campo: 'vehiculo.serie', mensaje: 'serie desconocida en el catalogo MG' });
+  } else if (!variante) {
+    errores.push({
+      campo: 'vehiculo.variante',
+      mensaje: `variante desconocida o ambigua para la serie ${modelo.serie}`,
+    });
+  }
+
+  const concesionario = buscarConcesionario(reclamo.concesionario.nombre);
+  const sucursal = concesionario
+    ? buscarSucursal(concesionario, reclamo.concesionario.sucursal)
+    : undefined;
+
+  if (!concesionario) {
+    errores.push({
+      campo: 'concesionario.nombre',
+      mensaje: 'concesionario no activo en posventa',
+    });
+  } else if (!sucursal) {
+    errores.push({
+      campo: 'concesionario.sucursal',
+      mensaje: `sucursal desconocida o ambigua para ${concesionario.nombre}`,
+    });
+  }
+
+  if (errores.length > 0) return { ok: false, errores };
+
+  return {
+    ok: true,
+    reclamo: {
+      ...reclamo,
+      vehiculo: { ...reclamo.vehiculo, serie: modelo!.serie, variante: variante! },
+      concesionario: { nombre: concesionario!.nombre, sucursal: sucursal! },
+    },
+  };
+}
 
 /**
  * Unicos campos de la API externa que pueden llegar a GHL.

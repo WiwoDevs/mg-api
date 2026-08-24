@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { verificarClave, verificarFirma } from '../security/autenticacion.ts';
 import { estaBloqueada, ipPermitida, limpiarFallos, registrarFallo } from '../security/perimetro.ts';
-import { esquemaReclamo, mapearRespuesta } from '../schemas/reclamo.ts';
+import { esquemaReclamo, mapearRespuesta, resolverCatalogo } from '../schemas/reclamo.ts';
+import { mapearAZoho } from '../upstream/zoho.ts';
 import { consumirPresupuesto } from '../upstream/cliente.ts';
 import type { ColaReintentos } from '../cola/cola.ts';
 import type { Reclamo } from '../schemas/reclamo.ts';
@@ -86,6 +87,15 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
         return respuesta.code(400).send({ error: 'entrada_invalida', campos });
       }
 
+      // La forma ya esta bien; falta que la serie, la variante, el concesionario
+      // y la sucursal existan de verdad en el catalogo oficial de MG.
+      const catalogo = resolverCatalogo(validacion.data);
+
+      if (!catalogo.ok) {
+        return respuesta.code(400).send({ error: 'entrada_invalida', campos: catalogo.errores });
+      }
+
+      const reclamo = catalogo.reclamo;
       const idCorrelacion = String(peticion.id);
 
       if (!consumirPresupuesto()) {
@@ -94,7 +104,7 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
         return respuesta.code(429).send({ error: 'presupuesto_agotado' });
       }
 
-      const resultado = await enviar(validacion.data, idCorrelacion);
+      const resultado = await enviar(reclamo, idCorrelacion);
 
       if (resultado.ok && resultado.simulado) {
         // Modo sin Zoho: se devuelve lo que se le habria enviado, para poder
@@ -103,7 +113,7 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
           estado: 'simulado',
           idCorrelacion,
           mensaje: 'UPSTREAM_ACTIVO=false: no se envio nada a Zoho.',
-          seHabriaEnviado: validacion.data,
+          seHabriaEnviado: mapearAZoho(reclamo),
         });
       }
 
@@ -123,7 +133,7 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
         return respuesta.code(422).send({ error: 'reclamo_rechazado' });
       }
 
-      cola.encolar(validacion.data, idCorrelacion);
+      cola.encolar(reclamo, idCorrelacion);
       peticion.log.warn({ idCorrelacion, detalle: resultado.detalle }, 'api_externa_no_disponible');
 
       return respuesta.code(202).send({ estado: 'encolado', idCorrelacion });

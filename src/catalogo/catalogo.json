@@ -1,0 +1,348 @@
+{
+  "fuentes": [
+    "Modelos.xlsx",
+    "SUCURSALES ACTIVAS POSVENTA.xlsx"
+  ],
+  "modelos": [
+    {
+      "serie": "MARVELR",
+      "slug": "marvelr",
+      "campoGhl": "mg_marvel_r",
+      "variantes": [
+        "Marvel R DLX"
+      ]
+    },
+    {
+      "serie": "MG 4 Urban EV",
+      "slug": "mg_4_urban_ev",
+      "campoGhl": null,
+      "variantes": [
+        "MG 4 Urban EV 43kW COM",
+        "MG 4 Urban EV 43kW LUX"
+      ]
+    },
+    {
+      "serie": "MG CYBERSTER",
+      "slug": "mg_cyberster",
+      "campoGhl": null,
+      "variantes": [
+        "CYBERSTER 77 KHW",
+        "CYBERSTER 77 KHW AWD"
+      ]
+    },
+    {
+      "serie": "MG One",
+      "slug": "mg_one",
+      "campoGhl": "mg_one",
+      "variantes": [
+        "MG ONE CVT COM",
+        "MG ONE CVT DLX"
+      ]
+    },
+    {
+      "serie": "MG S5 EV",
+      "slug": "mg_s5_ev",
+      "campoGhl": null,
+      "variantes": [
+        "MG S5 EV 49kW COM",
+        "MG S5 EV 62kW LUX",
+        "MG S5 EV 49kW LUX"
+      ]
+    },
+    {
+      "serie": "MG3",
+      "slug": "mg3",
+      "campoGhl": "mg3",
+      "variantes": [
+        "MG 3 1.5L AT COM",
+        "MG 3 1.5L AT STD",
+        "MG 3 1.5L MT COM",
+        "MG 3 1.5L MT STD",
+        "NEW MG 3 1.5L CVT COM",
+        "NEW MG 3 1.5L CVT DLX",
+        "NEW MG 3 1.5L MT COM",
+        "NEW MG 3 1.5L MT STD",
+        "NEW MG 3 HEV COM"
+      ]
+    },
+    {
+      "serie": "MG4",
+      "slug": "mg4",
+      "campoGhl": "mg4",
+      "variantes": [
+        "MG 4 DELUXE LR",
+        "MG 4 LUXURY",
+        "MG 4 STANDARD",
+        "MG 4 XPOWER"
+      ]
+    },
+    {
+      "serie": "MG5",
+      "slug": "mg5",
+      "campoGhl": "mg5",
+      "variantes": [
+        "MG 5 1.5L CVT COM",
+        "MG 5 1.5L CVT DLX",
+        "MG 5 1.5L MT COM",
+        "MG 5 1.5L MT DLX",
+        "MG 5 1.5L MT STD"
+      ]
+    },
+    {
+      "serie": "MG6",
+      "slug": "mg6",
+      "campoGhl": null,
+      "variantes": [
+        "MG 6 1.5T DCT DLX",
+        "MG 6 1.5T DCT Trophy",
+        "MG 6 1.5T MT COM",
+        "MG 6 1.5T MT DLX"
+      ]
+    },
+    {
+      "serie": "MGGT",
+      "slug": "mggt",
+      "campoGhl": "mg_gt",
+      "variantes": [
+        "MG GT 1.5L CVT COM",
+        "MG GT 1.5L MT COM",
+        "MG GT 1.5T DCT DLX",
+        "MG GT1.5T DCT DEL 2WD"
+      ]
+    },
+    {
+      "serie": "MGHS",
+      "slug": "mghs",
+      "campoGhl": "mg_hs",
+      "variantes": [
+        "MG HS 1.5T DCT DLX",
+        "MG HS 1.5T MT COM",
+        "MG HS 1.5T MT DLX",
+        "MG HS 2.0T DCT Trophy",
+        "NUEVO MGHS 1.5T DCT DLX",
+        "NUEVO MGHS 1.5T DCT TROPHY",
+        "NUEVO MGHS 1.5T MT COM"
+      ]
+    },
+    {
+      "serie": "MGRX5",
+      "slug": "mgrx5",
+      "campoGhl": "mg_rx5",
+      "variantes": [
+        "MG RX5 1.5T DCT DLX",
+        "MG RX5 1.5T MT DLX",
+        "MG RX5 1.5T MT STD",
+        "MG RX5 2.0T DCT DLX AWD",
+        "MG RX5 2.0T DCT GDLX",
+        "MGRX5 1.5T MT STD",
+        "NEW MG RX5 1.5T DCT COM",
+        "NEW MG RX5 1.5T DCT DLX",
+        "NEW MG RX5 1.5T MT COM"
+      ]
+    },
+    {
+      "serie": "MGRX8",
+      "slug": "mgrx8",
+      "campoGhl": null,
+      "variantes": [
+        "MG RX8 2.0T 6AT GDEL 4WD",
+        "MG RX8 2.0T 6AT STD 4WD"
+      ]
+    },
+    {
+      "serie": "MGRX9",
+      "slug": "mgrx9",
+      "campoGhl": "mg_rx9",
+      "variantes": [
+        "MGRX9 2.0T AT COM 2WD",
+        "MGRX9 2.0T AT DLX 2WD",
+        "MGRX9 2.0T AT LUX 4WD"
+      ]
+    },
+    {
+      "serie": "MGZS",
+      "slug": "mgzs",
+      "campoGhl": "mg_zs",
+      "variantes": [
+        "ALL NEW MG ZS 1.5L CVT COM",
+        "ALL NEW MG ZS 1.5L CVT STD",
+        "ALL NEW MG ZS 1.5L MT COM",
+        "ALL NEW MG ZS 1.5L MT STD",
+        "ALL NEW MG ZS 1.5T CVT LUX",
+        "ALL NEW MG ZS HEV COM",
+        "ALL NEW MG ZS HEV DLX",
+        "MG ZS 1.5L AT COM",
+        "MG ZS 1.5L AT STD",
+        "MG ZS 1.5L MT COM",
+        "MG ZS 1.5L MT STD"
+      ]
+    },
+    {
+      "serie": "MGZX",
+      "slug": "mgzx",
+      "campoGhl": "mg_zx",
+      "variantes": [
+        "MG ZX 1.3T AT TROPHY",
+        "MG ZX 1.5L CVT COM",
+        "MG ZX 1.5L CVT DLX",
+        "MG ZX 1.5L MT COM",
+        "MG ZX 1.5L MT DLX"
+      ]
+    },
+    {
+      "serie": "ZSEV",
+      "slug": "zsev",
+      "campoGhl": "mg_zs_ev",
+      "variantes": [
+        "MG ZS EV DLX"
+      ]
+    }
+  ],
+  "concesionarios": [
+    {
+      "nombre": "Antivero",
+      "clavePlanilla": "ANTIVERO",
+      "campoGhl": "antivero",
+      "sucursales": [
+        "SAN FERNANDO"
+      ]
+    },
+    {
+      "nombre": "AutoSummit",
+      "clavePlanilla": "AUTOSUMMIT",
+      "campoGhl": "autosummit",
+      "sucursales": [
+        "ANTOFAGASTA",
+        "CALAMA"
+      ]
+    },
+    {
+      "nombre": "Bruno Fritsch",
+      "clavePlanilla": "BRUNO",
+      "campoGhl": "bruno_fritsch",
+      "sucursales": [
+        "CISTERNA",
+        "LA FLORIDA",
+        "SAN BERNARDO"
+      ]
+    },
+    {
+      "nombre": "Carmona",
+      "clavePlanilla": "CARMONA",
+      "campoGhl": "carmona",
+      "sucursales": [
+        "COPIAPO",
+        "LA SERENA"
+      ]
+    },
+    {
+      "nombre": "Cartoni",
+      "clavePlanilla": "CARTONI",
+      "campoGhl": "cartoni",
+      "sucursales": [
+        "El Salto, VIÑA DEL MAR"
+      ]
+    },
+    {
+      "nombre": "Difor",
+      "clavePlanilla": "DIFOR",
+      "campoGhl": "difor",
+      "sucursales": [
+        "LA FLORIDA",
+        "OSORNO",
+        "PUENTE ALTO",
+        "RANCAGUA"
+      ]
+    },
+    {
+      "nombre": "Forcenter",
+      "clavePlanilla": "FORCENTER",
+      "campoGhl": "forcenter",
+      "sucursales": [
+        "MACUL"
+      ]
+    },
+    {
+      "nombre": "Fronza",
+      "clavePlanilla": "FRONZA",
+      "campoGhl": "fronza",
+      "sucursales": [
+        "CALERA",
+        "CONCON",
+        "CURAUMA",
+        "QUILLOTA",
+        "QUILPUE",
+        "VALPO"
+      ]
+    },
+    {
+      "nombre": "Italmotors",
+      "clavePlanilla": "ITALMOTORS",
+      "campoGhl": "italmotors",
+      "sucursales": [
+        "LINARES",
+        "TALCA"
+      ]
+    },
+    {
+      "nombre": "Pompeyo Carrasco",
+      "clavePlanilla": "POMPEYO",
+      "campoGhl": "pompeyo_carrasco",
+      "sucursales": [
+        "INDEPENDENCIA",
+        "MELIPILLA",
+        "MOVICENTER",
+        "PEÑALOLEN",
+        "ÑUÑOA"
+      ]
+    },
+    {
+      "nombre": "Portillo",
+      "clavePlanilla": "PORTILLO",
+      "campoGhl": "portillo",
+      "sucursales": [
+        "CURICO",
+        "LA REINA",
+        "LO BARNECHEA",
+        "SAN FELIPE",
+        "VITACURA"
+      ]
+    },
+    {
+      "nombre": "Salazar Israel",
+      "clavePlanilla": "SALAZAR",
+      "campoGhl": "salazar_israel",
+      "sucursales": [
+        "CERRILLOS",
+        "CHILLAN",
+        "COLINA",
+        "CONCE",
+        "ESTACION CENTRAL",
+        "HUALPEN",
+        "HUECHURABA",
+        "LOS ANGELES",
+        "MAIPU",
+        "SAN ANTONIO",
+        "TEMUCO",
+        "VALDIVIA"
+      ]
+    },
+    {
+      "nombre": "Servimaq",
+      "clavePlanilla": "SERVIMAQ",
+      "campoGhl": "servimaq",
+      "sucursales": [
+        "PUERTO MONTT"
+      ]
+    },
+    {
+      "nombre": "Sociedad Real",
+      "clavePlanilla": "SOCIEDAD REAL",
+      "campoGhl": "sociedad_real",
+      "sucursales": [
+        "COYHAIQUE",
+        "PUNTA ARENAS"
+      ]
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { entorno } from '../env.ts';
 import type { Reclamo } from '../schemas/reclamo.ts';
+import { mapearAZoho } from './zoho.ts';
 
 export type ResultadoUpstream =
   | { ok: true; datos: unknown; simulado?: true }
@@ -71,7 +72,7 @@ export async function enviarReclamo(
         authorization: `Bearer ${entorno.UPSTREAM_TOKEN}`,
         'x-correlacion': idCorrelacion,
       },
-      body: JSON.stringify(reclamo),
+      body: JSON.stringify(mapearAZoho(reclamo)),
     });
 
     if (respuesta.ok) {

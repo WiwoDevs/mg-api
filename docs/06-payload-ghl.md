@@ -175,6 +175,54 @@ GHL. **No corregirlos.** Si se arreglan, GHL manda el campo vacío y el dato se 
 | `cf_attachment_url` | `reclamo.imgenes_o_respaldo` | Validación de URL |
 | `cf_website_id` | `ghl_contact_id` | Se pasa tal cual |
 
+## Catálogo oficial
+
+Las series, variantes, concesionarios y sucursales válidos salen de los Excel de MG y viven en
+[`src/catalogo/catalogo.json`](../src/catalogo/catalogo.json). Se regeneran con `npm run catalogo`; no
+se editan a mano.
+
+- `Modelos.xlsx` → **17 series** y **74 variantes**.
+- `SUCURSALES ACTIVAS POSVENTA.xlsx` → **14 concesionarios** y **47 sucursales**.
+
+Se usa la planilla de posventa y no la de Lead form: esta API recibe reclamos, que son postventa. Las
+dos listas no coinciden — Lead form tiene 13 concesionarios y otros puntos de venta.
+
+La planilla trae dos anotaciones del equipo que el generador respeta: **Círculo queda fuera** (marcado
+para eliminar) e **Italmotors queda dentro** con Talca y Linares (marcado para agregar).
+
+Un reclamo cuya serie, variante, concesionario o sucursal no exista en el catálogo se rechaza con 400.
+Es lo que impide que a Zoho llegue un modelo inventado o mal escrito.
+
+## Desajustes con los campos actuales de GHL
+
+Comparando el catálogo contra los campos que GHL tiene creados hoy. La lista completa y actualizada está
+en [`docs/contrato-mgapi.json`](contrato-mgapi.json), en `desajustesConGhl`.
+
+**Faltan crear en GHL** — cinco series sin campo de variante. Quien tenga uno de estos autos no puede
+declarar su variante:
+
+| Serie | Variantes que existen |
+|---|---|
+| MG6 | 4 |
+| MG S5 EV | 3 |
+| MG 4 Urban EV | 2 |
+| MG CYBERSTER | 2 |
+| MGRX8 | 2 |
+
+También falta el concesionario **Italmotors** (Talca y Linares).
+
+**Sobran en GHL:**
+
+| Campo | Por qué |
+|---|---|
+| `mg4_xpower` | `MG 4 XPOWER` es una variante de la serie MG4, no una serie. Viaja en `cf_model` |
+| `crculo_autos` | La planilla de posventa marca Círculo para eliminar |
+| `movicenter` | Movicenter es una **sucursal de Pompeyo Carrasco**, no un concesionario |
+
+`mg4_xpower` y `movicenter` son el mismo error de fondo: se creó un campo de nivel superior para algo
+que en realidad es una opción dentro de otro. Es la misma confusión entre modelo y variante que había en
+el payload anterior.
+
 ## Lo que falta para escribir la limpieza
 
 1. **La lista exacta de opciones de `modelo_del_auto`.** Los valores literales del desplegable en GHL,

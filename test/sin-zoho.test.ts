@@ -66,7 +66,7 @@ describe('modo sin Zoho', () => {
     assert.equal(huboLlamadaReal, false, 'no debe llamar a Zoho con UPSTREAM_ACTIVO=false');
   });
 
-  test('devuelve el reclamo ya validado y normalizado', async () => {
+  test('devuelve el cuerpo de Zoho ya limpio y traducido', async () => {
     const respuesta = await app.inject({
       method: 'POST',
       url: '/v1/reclamos',
@@ -75,9 +75,15 @@ describe('modo sin Zoho', () => {
     });
     const enviado = respuesta.json().seHabriaEnviado;
 
-    assert.equal(enviado.rut, '123456785', 'el RUT se normaliza');
+    assert.equal(enviado.cf_id_number, '123456785', 'el RUT se normaliza');
     assert.equal(enviado.email, 'juan@ejemplo.cl', 'el email se pasa a minusculas');
-    assert.equal(enviado.vehiculo.patente, 'BCDF12');
+    assert.equal(enviado.cf_license_plate, 'BCDF12');
+    assert.equal(enviado.cf_mileage, '32500', 'el kilometraje pierde el separador de miles');
+    // La serie es el modelo y cf_model es la variante: se estaban confundiendo.
+    assert.equal(enviado.cf_series, 'MG4');
+    assert.equal(enviado.cf_model, 'MG 4 XPOWER');
+    assert.equal(enviado.cf_website_dealer, 'Bruno Fritsch');
+    assert.equal(enviado.cf_website_dealer_pos, 'LA FLORIDA');
   });
 
   test('la validacion sigue rechazando lo invalido', async () => {
