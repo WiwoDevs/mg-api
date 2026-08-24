@@ -87,10 +87,18 @@ export function rutaCaptura(): FastifyPluginAsync {
       // Unico lugar del sistema donde se registra un cuerpo, y solo en modo captura.
       peticion.log.warn({ captura }, 'modo_captura_peticion_recibida');
 
-      return respuesta.code(200).send({
-        recibido: captura,
-        captura: { numero: captura.numero, restantes: entorno.CAPTURA_MAXIMA - capturas.length },
+      // La respuesta es exactamente el JSON que llego, sin envoltorio: asi se ve
+      // la integracion tal cual. El origen y las cabeceras van en las cabeceras de
+      // respuesta y en GET /v1/capturas, para no ensuciar el cuerpo.
+      respuesta.headers({
+        'x-captura-numero': String(captura.numero),
+        'x-captura-restantes': String(entorno.CAPTURA_MAXIMA - capturas.length),
+        'x-captura-ip': captura.ip,
+        'x-captura-content-type': String(peticion.headers['content-type'] ?? 'sin declarar'),
       });
+
+      // Si no era JSON se devuelve el texto crudo: tambien es informacion util.
+      return respuesta.code(200).send(captura.cuerpo ?? captura.cuerpoCrudo);
     });
 
     // La lectura si pide clave: GHL no siempre muestra el cuerpo de la respuesta.

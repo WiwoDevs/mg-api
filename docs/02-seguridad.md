@@ -162,5 +162,5 @@ Vale más tenerlos escritos que descubrirlos después:
   único dato con carga personal que se registra.
 - **Con `MODO_CAPTURA=true` hay un endpoint abierto** que devuelve y registra todo lo que recibe. Es
   temporal, se apaga solo tras `CAPTURA_MAXIMA` peticiones, y no toca la seguridad de `/v1/reclamos`.
-  Detalle en [Modo captura](05-modo-captura.md).
+  Detalle en [Modos de prueba](05-modos-de-prueba.md).
 - **Rotar `COLA_CLAVE_CIFRADO` invalida lo que ya esté en cola.** Vaciar la cola antes de rotar.

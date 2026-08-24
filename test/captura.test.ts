@@ -48,14 +48,12 @@ describe('modo captura', () => {
       headers: { 'content-type': 'application/json', 'x-ghl-evento': 'contacto' },
       payload: JSON.stringify({ contact_id: 'abc', first_name: 'Juan' }),
     });
-    const cuerpo = respuesta.json();
-
     assert.equal(respuesta.statusCode, 200);
-    assert.equal(cuerpo.recibido.ip, '198.51.100.42');
-    assert.equal(cuerpo.recibido.metodo, 'POST');
-    assert.equal(cuerpo.recibido.cabeceras['x-ghl-evento'], 'contacto');
-    assert.equal(cuerpo.recibido.cuerpo.contact_id, 'abc');
-    assert.ok(cuerpo.recibido.cuerpoCrudo.includes('first_name'));
+    // El cuerpo devuelto es exactamente el JSON que llego, sin envoltorio.
+    assert.deepEqual(respuesta.json(), { contact_id: 'abc', first_name: 'Juan' });
+    // El origen viaja en cabeceras, para no ensuciar el cuerpo.
+    assert.equal(respuesta.headers['x-captura-ip'], '198.51.100.42');
+    assert.equal(respuesta.headers['x-captura-numero'], '1');
   });
 
   test('acepta un cuerpo que no es JSON y lo conserva crudo', async () => {
@@ -65,11 +63,9 @@ describe('modo captura', () => {
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       payload: 'first_name=Juan&phone=%2B56912345678',
     });
-    const cuerpo = respuesta.json();
-
     assert.equal(respuesta.statusCode, 200);
-    assert.equal(cuerpo.recibido.cuerpo, null, 'no era JSON');
-    assert.ok(cuerpo.recibido.cuerpoCrudo.includes('first_name=Juan'));
+    // No era JSON: se devuelve el texto crudo tal cual llego.
+    assert.equal(respuesta.body, 'first_name=Juan&phone=%2B56912345678');
   });
 
   test('nunca devuelve la clave propia aunque el llamante la mande', async () => {
@@ -77,11 +73,19 @@ describe('modo captura', () => {
       method: 'POST',
       url: '/v1/captura',
       headers: { 'content-type': 'application/json', 'x-mgapi-key': CLAVE },
-      payload: '{}',
+      payload: '{"hola":1}',
     });
 
-    assert.equal(respuesta.json().recibido.cabeceras['x-mgapi-key'], '[oculto]');
-    assert.ok(!respuesta.body.includes(CLAVE));
+    assert.ok(!respuesta.body.includes(CLAVE), 'la clave no vuelve en el cuerpo');
+
+    const guardadas = await app.inject({
+      method: 'GET',
+      url: '/v1/capturas',
+      headers: { 'x-mgapi-key': CLAVE },
+    });
+    const ultima = guardadas.json().capturas.at(-1);
+
+    assert.equal(ultima.cabeceras['x-mgapi-key'], '[oculto]', 'tampoco queda guardada');
   });
 
   test('se apaga solo al llegar al maximo de capturas', async () => {

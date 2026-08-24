@@ -41,9 +41,13 @@ const esquemaEntorno = z.object({
   HMAC_SECRETO: z.string().min(32).optional(),
   HMAC_VENTANA_SEGUNDOS: z.coerce.number().int().positive().default(300),
 
-  // API externa
-  UPSTREAM_URL: urlAbsoluta,
-  UPSTREAM_TOKEN: z.string().min(1),
+  // API externa (Zoho)
+  // Con UPSTREAM_ACTIVO=false no se llama a Zoho: el reclamo se valida y se
+  // responde lo que se le habria enviado. Sirve para probar la ingesta desde
+  // GHL antes de tener credenciales. Ver docs/05-modos-de-prueba.md
+  UPSTREAM_ACTIVO: z.enum(['true', 'false']).default('true').transform((valor) => valor === 'true'),
+  UPSTREAM_URL: urlAbsoluta.optional(),
+  UPSTREAM_TOKEN: z.string().min(1).optional(),
   UPSTREAM_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   UPSTREAM_PRESUPUESTO_DIARIO: z.coerce.number().int().positive().default(1000),
 
@@ -58,7 +62,7 @@ const esquemaEntorno = z.object({
   LIMITE_POR_MINUTO: z.coerce.number().int().positive().default(60),
 
   // Modo captura: endpoint abierto y temporal para descubrir que manda GHL.
-  // Se apaga solo tras CAPTURA_MAXIMA peticiones. Ver docs/05-modo-captura.md
+  // Se apaga solo tras CAPTURA_MAXIMA peticiones. Ver docs/05-modos-de-prueba.md
   MODO_CAPTURA: booleano,
   CAPTURA_MAXIMA: z.coerce.number().int().positive().max(500).default(50),
 });
@@ -81,6 +85,15 @@ function cargarEntorno(): z.infer<typeof esquemaEntorno> {
 
   if (resultado.data.HMAC_ACTIVO && !resultado.data.HMAC_SECRETO) {
     console.error('Configuracion invalida: HMAC_ACTIVO=true requiere HMAC_SECRETO.');
+    process.exit(1);
+  }
+
+  // Las credenciales de Zoho solo son obligatorias si de verdad se va a llamar.
+  if (resultado.data.UPSTREAM_ACTIVO && (!resultado.data.UPSTREAM_URL || !resultado.data.UPSTREAM_TOKEN)) {
+    console.error(
+      'Configuracion invalida: UPSTREAM_ACTIVO=true requiere UPSTREAM_URL y UPSTREAM_TOKEN. ' +
+        'Para probar sin Zoho, usa UPSTREAM_ACTIVO=false.',
+    );
     process.exit(1);
   }
 

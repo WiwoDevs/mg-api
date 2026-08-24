@@ -22,7 +22,7 @@ Requiere Node 24 o superior: el proyecto ejecuta TypeScript directamente, sin pa
 | [Seguridad](docs/02-seguridad.md) | Modelo de amenazas, los diez controles y los límites conocidos |
 | [Contrato de la API](docs/03-contrato-api.md) | Endpoint, cabeceras, cuerpos, códigos de error y configuración en GHL |
 | [Despliegue y operación](docs/04-despliegue-operacion.md) | VPS, Docker, Caddy, rotación de secretos y respuesta a incidentes |
-| [Modo captura](docs/05-modo-captura.md) | Endpoint temporal y abierto para descubrir el formato que envía GHL |
+| [Modos de prueba](docs/05-modos-de-prueba.md) | Modo captura para descubrir el formato de GHL, y modo sin Zoho para operar sin credenciales |
 
 ## Principio
 

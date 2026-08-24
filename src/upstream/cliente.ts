@@ -2,7 +2,7 @@ import { entorno } from '../env.ts';
 import type { Reclamo } from '../schemas/reclamo.ts';
 
 export type ResultadoUpstream =
-  | { ok: true; datos: unknown }
+  | { ok: true; datos: unknown; simulado?: true }
   | { ok: false; reintentable: boolean; detalle: string };
 
 const presupuesto = { dia: '', usados: 0 };
@@ -55,8 +55,13 @@ export async function enviarReclamo(
   reclamo: Reclamo,
   idCorrelacion: string,
 ): Promise<ResultadoUpstream> {
+  if (!entorno.UPSTREAM_ACTIVO) {
+    // Modo sin Zoho: se valido todo, pero no sale ninguna peticion al exterior.
+    return { ok: true, simulado: true, datos: {} };
+  }
+
   try {
-    const respuesta = await fetch(entorno.UPSTREAM_URL, {
+    const respuesta = await fetch(entorno.UPSTREAM_URL as string, {
       method: 'POST',
       redirect: 'error',
       signal: AbortSignal.timeout(entorno.UPSTREAM_TIMEOUT_MS),

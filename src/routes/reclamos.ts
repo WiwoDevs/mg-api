@@ -96,6 +96,17 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
 
       const resultado = await enviar(validacion.data, idCorrelacion);
 
+      if (resultado.ok && resultado.simulado) {
+        // Modo sin Zoho: se devuelve lo que se le habria enviado, para poder
+        // revisar el resultado de la validacion y la limpieza desde GHL.
+        return respuesta.code(200).send({
+          estado: 'simulado',
+          idCorrelacion,
+          mensaje: 'UPSTREAM_ACTIVO=false: no se envio nada a Zoho.',
+          seHabriaEnviado: validacion.data,
+        });
+      }
+
       if (resultado.ok) {
         // El resumen va anidado para que un campo de la API externa no pueda
         // pisar los campos propios de esta respuesta.

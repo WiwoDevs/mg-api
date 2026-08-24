@@ -142,6 +142,12 @@ export async function construirServidor(opciones: OpcionesServidor = {}): Promis
     );
   }
 
+  if (!entorno.UPSTREAM_ACTIVO) {
+    app.log.warn(
+      'UPSTREAM_ACTIVO=false: no se enviara nada a Zoho. /v1/reclamos valida y responde en modo simulado.',
+    );
+  }
+
   if (entorno.NODE_ENV === 'production' && !allowlistActiva()) {
     app.log.warn('IPS_GHL esta vacia: la unica defensa del endpoint es la clave compartida.');
   }
