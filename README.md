@@ -23,6 +23,7 @@ Requiere Node 24 o superior: el proyecto ejecuta TypeScript directamente, sin pa
 | [Contrato de la API](docs/03-contrato-api.md) | Endpoint, cabeceras, cuerpos, códigos de error y configuración en GHL |
 | [Despliegue y operación](docs/04-despliegue-operacion.md) | VPS, Docker, Caddy, rotación de secretos y respuesta a incidentes |
 | [Modos de prueba](docs/05-modos-de-prueba.md) | Modo captura para descubrir el formato de GHL, y modo sin Zoho para operar sin credenciales |
+| [Payload de GHL](docs/06-payload-ghl.md) | Qué debe enviar GHL, la regla de selección de variante y la traducción a Zoho |
 
 ## Principio
 
