@@ -19,7 +19,7 @@ process.env.LIMITE_POR_MINUTO = '10000';
 
 const { construirServidor } = await import('../src/app.ts');
 const { reiniciarPresupuesto } = await import('../src/upstream/cliente.ts');
-const reclamoValido = JSON.parse(readFileSync('test/fixtures/reclamo-valido.json', 'utf8'));
+const reclamoValido = JSON.parse(readFileSync('test/fixtures/webhook-ghl.json', 'utf8'));
 
 /** Respuesta simulada de la API externa; la sobreescribe cada prueba. */
 let respuestaSimulada: Awaited<ReturnType<typeof enviarSimulado>>;
@@ -80,7 +80,10 @@ describe('validacion de entrada', () => {
   });
 
   test('RUT con digito verificador invalido se rechaza', async () => {
-    const respuesta = await pedir({ ...reclamoValido, rut: '12.345.678-9' });
+    const respuesta = await pedir({
+      ...reclamoValido,
+      contacto: { ...reclamoValido.contacto, rut: '12.345.678-9' },
+    });
 
     assert.equal(respuesta.statusCode, 400);
     assert.ok(respuesta.json().campos.some((campo: { campo: string }) => campo.campo === 'rut'));
@@ -89,14 +92,17 @@ describe('validacion de entrada', () => {
   test('patente con formato invalido se rechaza', async () => {
     const respuesta = await pedir({
       ...reclamoValido,
-      vehiculo: { ...reclamoValido.vehiculo, patente: '123456' },
+      vehiculo: { ...reclamoValido.vehiculo, patente_del_vehculo: '123456' },
     });
 
     assert.equal(respuesta.statusCode, 400);
   });
 
   test('un cuerpo sobre 32 KB se rechaza con 413', async () => {
-    const respuesta = await pedir({ ...reclamoValido, motivo: 'a'.repeat(40_000) });
+    const respuesta = await pedir({
+      ...reclamoValido,
+      reclamo: { ...reclamoValido.reclamo, 'descripcin_del_problema': 'a'.repeat(40_000) },
+    });
 
     assert.equal(respuesta.statusCode, 413);
   });

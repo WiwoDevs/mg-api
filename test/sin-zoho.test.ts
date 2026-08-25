@@ -20,7 +20,7 @@ delete process.env.UPSTREAM_URL;
 delete process.env.UPSTREAM_TOKEN;
 
 const { construirServidor } = await import('../src/app.ts');
-const reclamoValido = JSON.parse(readFileSync('test/fixtures/reclamo-valido.json', 'utf8'));
+const reclamoValido = JSON.parse(readFileSync('test/fixtures/webhook-ghl.json', 'utf8'));
 
 let app: FastifyInstance;
 let huboLlamadaReal = false;
@@ -71,12 +71,14 @@ describe('modo sin Zoho', () => {
       method: 'POST',
       url: '/v1/reclamos',
       headers: { 'content-type': 'application/json', 'x-mgapi-key': CLAVE },
-      payload: JSON.stringify({ ...reclamoValido, rut: '12.345.678-5', email: 'JUAN@Ejemplo.CL' }),
+      payload: JSON.stringify(reclamoValido),
     });
     const enviado = respuesta.json().seHabriaEnviado;
 
     assert.equal(enviado.cf_id_number, '123456785', 'el RUT se normaliza');
-    assert.equal(enviado.email, 'juan@ejemplo.cl', 'el email se pasa a minusculas');
+    assert.equal(enviado.email, 'juan.perez@ejemplo.cl', 'el email se pasa a minusculas');
+    assert.equal(enviado.cf_first_name, 'Juan');
+    assert.equal(enviado.cf_last_name, 'Perez Soto');
     assert.equal(enviado.cf_license_plate, 'BCDF12');
     assert.equal(enviado.cf_mileage, '32500', 'el kilometraje pierde el separador de miles');
     // La serie es el modelo y cf_model es la variante: se estaban confundiendo.
@@ -91,7 +93,10 @@ describe('modo sin Zoho', () => {
       method: 'POST',
       url: '/v1/reclamos',
       headers: { 'content-type': 'application/json', 'x-mgapi-key': CLAVE },
-      payload: JSON.stringify({ ...reclamoValido, rut: '12.345.678-9' }),
+      payload: JSON.stringify({
+        ...reclamoValido,
+        contacto: { ...reclamoValido.contacto, rut: '12.345.678-9' },
+      }),
     });
 
     assert.equal(respuesta.statusCode, 400);

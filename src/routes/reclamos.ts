@@ -1,7 +1,8 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { verificarClave, verificarFirma } from '../security/autenticacion.ts';
 import { estaBloqueada, ipPermitida, limpiarFallos, registrarFallo } from '../security/perimetro.ts';
-import { esquemaReclamo, mapearRespuesta, resolverCatalogo } from '../schemas/reclamo.ts';
+import { mapearRespuesta } from '../schemas/reclamo.ts';
+import { procesarPayloadGhl } from '../schemas/ingesta-ghl.ts';
 import { mapearAZoho } from '../upstream/zoho.ts';
 import { consumirPresupuesto } from '../upstream/cliente.ts';
 import type { ColaReintentos } from '../cola/cola.ts';
@@ -75,27 +76,16 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
     });
 
     app.post('/reclamos', async (peticion, respuesta) => {
-      const validacion = esquemaReclamo.safeParse(peticion.body);
+      // Del cuerpo crudo de GHL al reclamo limpio: forma, seleccion por nombre,
+      // formato de cada campo y existencia en el catalogo oficial de MG.
+      const ingesta = procesarPayloadGhl(peticion.body);
 
-      if (!validacion.success) {
+      if (!ingesta.ok) {
         // Se devuelven nombres de campo y motivo, nunca el valor recibido.
-        const campos = validacion.error.issues.map((issue) => ({
-          campo: issue.path.join('.'),
-          mensaje: issue.message,
-        }));
-
-        return respuesta.code(400).send({ error: 'entrada_invalida', campos });
+        return respuesta.code(400).send({ error: 'entrada_invalida', campos: ingesta.errores });
       }
 
-      // La forma ya esta bien; falta que la serie, la variante, el concesionario
-      // y la sucursal existan de verdad en el catalogo oficial de MG.
-      const catalogo = resolverCatalogo(validacion.data);
-
-      if (!catalogo.ok) {
-        return respuesta.code(400).send({ error: 'entrada_invalida', campos: catalogo.errores });
-      }
-
-      const reclamo = catalogo.reclamo;
+      const reclamo = ingesta.reclamo;
       const idCorrelacion = String(peticion.id);
 
       if (!consumirPresupuesto()) {
