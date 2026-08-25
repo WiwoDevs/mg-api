@@ -34,6 +34,12 @@
   "payloadDesdeGhl": {
     "explicacion": "GHL debe enviar un campo por cada variable, sin concatenar. Antes concatenaba muchas variables separadas por un caracter invisible, lo que producia valores pegados como 'MG3MG5' porque el contacto de GHL acumula respuestas de reclamos anteriores.",
     "advertenciaNombres": "Los nombres con errores de tipeo (patente_del_vehculo, ao_del_vehculo, descripcin_del_problema, imgenes_o_respaldo, crculo_autos, nombre_convesionario) son los slugs reales de GHL y NO deben corregirse. GHL elimina los caracteres acentuados en vez de transcribirlos: 'año' produce 'ao', 'Circulo' produce 'crculo'.",
+    "camposDeTransicion": {
+      "explicacion": "Estos campos de GHL no corresponden al catalogo, pero siguen en la plantilla porque pueden tener datos reales de reclamos anteriores. Quitarlos ahora perderia esos reclamos. Se retiran cuando GHL este limpio.",
+      "mg4_xpower": "Origen alternativo de la variante de la serie MG4. Si el usuario eligio XPOWER, quedo guardado aqui y no en el campo mg4.",
+      "movicenter": "Origen alternativo de la sucursal de Pompeyo Carrasco. Movicenter es una sucursal suya, no un concesionario.",
+      "crculo_autos": "Circulo ya no atiende posventa. Un reclamo con este valor se rechaza a proposito, para que se derive a un concesionario activo."
+    },
     "plantilla": {
       "ghl_contact_id": "{{contact.id}}",
       "contacto": {

@@ -20,6 +20,7 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 SALIDA = RAIZ / 'src' / 'catalogo' / 'catalogo.json'
 CONTRATO = RAIZ / 'docs' / 'contrato-mgapi.json'
+WEBHOOK = RAIZ / 'docs' / 'webhook-ghl.json'
 
 # Campos personalizados que GHL tiene creados hoy, tomados del payload anterior.
 GHL_CAMPOS_MODELO = [
@@ -248,9 +249,14 @@ def main() -> None:
     contrato['desajustesConGhl'] = calcular_desajustes(modelos, concesionarios)
     CONTRATO.write_text(json.dumps(contrato, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
+    # El cuerpo suelto, listo para pegar en la accion de webhook de GHL.
+    plantilla = contrato['payloadDesdeGhl']['plantilla']
+    WEBHOOK.write_text(json.dumps(plantilla, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+
     print(f'{SALIDA.relative_to(RAIZ)}')
     print(f'  {len(modelos)} series, {sum(len(m["variantes"]) for m in modelos)} variantes')
     print(f'  {len(concesionarios)} concesionarios, {sum(len(c["sucursales"]) for c in concesionarios)} sucursales')
+    print(f'{WEBHOOK.relative_to(RAIZ)}')
     print(f'{CONTRATO.relative_to(RAIZ)}')
     for clave, valor in contrato['desajustesConGhl'].items():
         if valor:

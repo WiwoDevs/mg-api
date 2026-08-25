@@ -1,0 +1,56 @@
+{
+  "ghl_contact_id": "{{contact.id}}",
+  "contacto": {
+    "first_name": "{{contact.first_name}}",
+    "last_name": "{{contact.last_name}}",
+    "rut": "{{contact.rut}}",
+    "phone": "{{contact.phone}}",
+    "email": "{{contact.email}}"
+  },
+  "vehiculo": {
+    "patente_del_vehculo": "{{contact.patente_del_vehculo}}",
+    "ao_del_vehculo": "{{contact.ao_del_vehculo}}",
+    "vin_del_vehculo": "{{contact.vin_del_vehculo}}",
+    "kilometraje": "{{contact.kilometraje}}",
+    "modelo_del_auto": "{{contact.modelo_del_auto}}"
+  },
+  "variante_por_modelo": {
+    "mg4": "{{contact.mg4}}",
+    "mg4_xpower": "{{contact.mg4_xpower}}",
+    "mg3": "{{contact.mg3}}",
+    "mg5": "{{contact.mg5}}",
+    "mg_hs": "{{contact.mg_hs}}",
+    "mg_gt": "{{contact.mg_gt}}",
+    "mg_zs": "{{contact.mg_zs}}",
+    "mg_zx": "{{contact.mg_zx}}",
+    "mg_one": "{{contact.mg_one}}",
+    "mg_rx5": "{{contact.mg_rx5}}",
+    "mg_rx9": "{{contact.mg_rx9}}",
+    "mg_marvel_r": "{{contact.mg_marvel_r}}",
+    "mg_zs_ev": "{{contact.mg_zs_ev}}"
+  },
+  "concesionario": {
+    "nombre_convesionario": "{{contact.nombre_convesionario}}"
+  },
+  "sucursal_por_concesionario": {
+    "antivero": "{{contact.sucursales_antivero}}",
+    "autosummit": "{{contact.sucursales_autosummit}}",
+    "bruno_fritsch": "{{contact.sucursales_bruno_fritsch}}",
+    "carmona": "{{contact.sucursales_carmona}}",
+    "cartoni": "{{contact.sucursales_cartoni}}",
+    "crculo_autos": "{{contact.sucursales_crculo_autos}}",
+    "difor": "{{contact.sucursales_difor}}",
+    "forcenter": "{{contact.sucursales_forcenter}}",
+    "fronza": "{{contact.sucursales_fronza}}",
+    "movicenter": "{{contact.sucursales_movicenter}}",
+    "pompeyo_carrasco": "{{contact.sucursales_pompeyo_carrasco}}",
+    "portillo": "{{contact.sucursales_portillo}}",
+    "salazar_israel": "{{contact.sucursales_salazar_israel}}",
+    "servimaq": "{{contact.sucursales_servimaq}}",
+    "sociedad_real": "{{contact.sucursales_sociedad_real}}"
+  },
+  "reclamo": {
+    "descripcin_del_problema": "{{contact.descripcin_del_problema}}",
+    "imgenes_o_respaldo": "{{contact.imgenes_o_respaldo}}"
+  }
+}
