@@ -1,0 +1,56 @@
+{
+  "ghl_contact_id": "ghl-abc123",
+  "contacto": {
+    "first_name": "Juan",
+    "last_name": "Perez Soto",
+    "rut": "12.345.678-5",
+    "phone": "+56912345678",
+    "email": "Juan.Perez@Ejemplo.CL"
+  },
+  "vehiculo": {
+    "patente_del_vehculo": "bcdf12",
+    "ao_del_vehculo": "2023",
+    "vin_del_vehculo": "LSJA24U97PN123456",
+    "kilometraje": "32.500",
+    "modelo_del_auto": "MG4"
+  },
+  "variante_por_modelo": {
+    "mg4": "MG 4 XPOWER",
+    "mg4_xpower": "",
+    "mg3": "NEW MG 3 HEV COM",
+    "mg5": "",
+    "mg_hs": "",
+    "mg_gt": "",
+    "mg_zs": "MG ZS 1.5L AT COM",
+    "mg_zx": "",
+    "mg_one": "",
+    "mg_rx5": "",
+    "mg_rx9": "",
+    "mg_marvel_r": "",
+    "mg_zs_ev": "{{contact.mg_zs_ev}}"
+  },
+  "concesionario": {
+    "nombre_convesionario": "Bruno Fritsch"
+  },
+  "sucursal_por_concesionario": {
+    "antivero": "",
+    "autosummit": "",
+    "bruno_fritsch": "LA FLORIDA",
+    "carmona": "",
+    "cartoni": "",
+    "crculo_autos": "",
+    "difor": "",
+    "forcenter": "",
+    "fronza": "",
+    "movicenter": "",
+    "pompeyo_carrasco": "",
+    "portillo": "",
+    "salazar_israel": "TEMUCO",
+    "servimaq": "",
+    "sociedad_real": "{{contact.sucursales_sociedad_real}}"
+  },
+  "reclamo": {
+    "descripcin_del_problema": "El vehiculo presenta una falla recurrente en el sistema de frenos.",
+    "imgenes_o_respaldo": "https://ejemplo.cl/adjuntos/abc123.jpg"
+  }
+}

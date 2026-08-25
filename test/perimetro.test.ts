@@ -23,7 +23,7 @@ process.env.AUTH_BLOQUEO_MINUTOS = '15';
 
 const { construirServidor } = await import('../src/app.ts');
 const { reiniciarPresupuesto } = await import('../src/upstream/cliente.ts');
-const reclamoValido = JSON.parse(readFileSync('test/fixtures/reclamo-valido.json', 'utf8'));
+const reclamoValido = JSON.parse(readFileSync('test/fixtures/webhook-ghl.json', 'utf8'));
 
 async function enviarSimulado(): Promise<{ ok: true; datos: unknown }> {
   return { ok: true, datos: { folio: 'F-1' } };
