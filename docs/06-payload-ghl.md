@@ -279,19 +279,25 @@ el histórico acumulado en el origen.
 pasa a ser la única defensa contra el histórico. Ya está implementada y probada, y es la razón por la
 que el problema no llega a Zoho.
 
-#### El caso que ninguna regla puede resolver
+#### Qué tan lejos llega el histórico
 
-Con `contact.*` queda un hueco que conviene tener escrito, porque no se puede cerrar desde la API:
+Casi nada, y por dos razones que se refuerzan:
 
-> Si alguien reclamó un **MG4 XPOWER** el año pasado y hoy vuelve a reclamar por el **mismo MG4** pero
-> deja la variante en blanco, `contact.mg4` todavía tiene `XPOWER`. mgAPI lo lee y lo da por válido.
+1. **La selección por nombre nunca lee el campo de otro modelo.** Si se declara MG4, `mg3` no se mira.
+2. **Ninguna de las 74 variantes pertenece a más de una serie.** Aunque un valor de otro modelo llegara
+   al campo equivocado, el catálogo lo rechazaría: `MG 4 XPOWER` solo existe en MG4, `NEW MG 3 HEV COM`
+   solo en MG3.
 
-No es distinguible de un dato recién ingresado: llega un valor coherente, del campo correcto, para el
-modelo declarado. La única señal sería la fecha de actualización del campo, y GHL no la expone en las
-variables del webhook.
+Un modelo equivocado, entonces, no pasa.
 
-Se cierra en el formulario, no aquí: **hacer obligatoria la variante** en cada envío, para que nunca
-quede en blanco arrastrando el valor viejo. Mientras no lo sea, es un riesgo aceptado y conocido.
+Queda un solo caso, y es estrecho: **mismo modelo, variante distinta, campo en blanco.** Alguien reclamó
+por un MG4 STANDARD, después cambió a un MG4 LUXURY, y en el reclamo nuevo deja la variante vacía:
+`contact.mg4` conserva `STANDARD` y viaja como si fuera actual.
+
+Si es el mismo auto de siempre, el valor viejo sigue siendo el correcto y no hay nada que arreglar. Solo
+falla cuando la persona cambió de variante dentro del mismo modelo.
+
+Hacer obligatoria la variante en el formulario lo cierra del todo, pero es higiene, no urgencia.
 
 ## Lo que falta para escribir la limpieza
 
