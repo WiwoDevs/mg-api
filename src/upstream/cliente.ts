@@ -5,7 +5,7 @@ import { invalidarCredencial, obtenerCredencial } from './zoho-auth.ts';
 
 export type ResultadoUpstream =
   | { ok: true; datos: unknown; simulado?: true }
-  | { ok: false; reintentable: boolean; detalle: string; codigoZoho?: string };
+  | { ok: false; reintentable: boolean; detalle: string; codigoZoho?: string; datosZoho?: unknown };
 
 const presupuesto = { dia: '', usados: 0 };
 
@@ -76,6 +76,8 @@ function errorLogicoDeZoho(datos: unknown): ResultadoUpstream | undefined {
     reintentable: !CODIGOS_DEFINITIVOS.has(codigo),
     detalle: `Zoho respondio codigo "${codigo}"`,
     codigoZoho: codigo,
+    // Se conserva para poder devolverselo a GHL: es lo que explica el rechazo.
+    datosZoho: datos,
   };
 }
 

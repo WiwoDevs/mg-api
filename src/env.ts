@@ -56,6 +56,9 @@ const esquemaEntorno = z.object({
   ZOHO_REFRESH_TOKEN: z.string().min(1).optional(),
   // Cuanto antes de que venza se renueva el token, para que ninguno caduque en vuelo.
   ZOHO_MARGEN_SEGUNDOS: z.coerce.number().int().positive().default(60),
+  // Que se le devuelve a GHL de lo que contesto Zoho.
+  // "completa" reenvia la respuesta tal cual; "filtrada" solo la lista blanca.
+  ZOHO_RESPUESTA_A_GHL: z.enum(['completa', 'filtrada']).default('completa'),
   // Nombre del argumento con el que la funcion de Zoho recibe el caso.
   ZOHO_ARGUMENTO_CASO: z.string().min(1).default('case'),
   // Espera antes de llamar a la funcion. El flujo anterior en GHL la necesitaba;

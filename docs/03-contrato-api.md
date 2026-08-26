@@ -82,8 +82,12 @@ lo escribiría de nuevo en sus registros.
 `zoho.detalle` sale de `details.output`, que es donde Zoho envuelve lo que devuelve la función, y pasa
 por la misma lista blanca de siempre.
 
-Con `MODO_CAPTURA=true` se agrega `zoho.respuestaCruda` con la respuesta completa de Zoho sin filtrar,
-para diagnosticar durante la integración.
+Con `ZOHO_RESPUESTA_A_GHL=completa` —el valor por defecto— se agrega `zoho.respuesta` con lo que Zoho
+contestó **tal cual**, sin recortar. También en los rechazos, que es donde más sirve: ahí viene el
+mensaje de Zoho que explica por qué no aceptó el reclamo.
+
+Con `filtrada` solo vuelve `zoho.detalle`. Vale la pena dejarlo en `completa` mientras se integra; una
+vez que el flujo funcione, `filtrada` reduce lo que se escribe en los registros de GHL.
 
 **202 — Zoho no estaba disponible; el reclamo quedó en la cola cifrada y se reintenta solo.** Para GHL
 es un éxito: el reclamo no se perdió, y `mgapi` confirma que se entendió bien.

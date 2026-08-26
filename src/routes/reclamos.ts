@@ -91,6 +91,8 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
       // Lo que mgAPI resolvio. Viaja en toda respuesta, incluso si Zoho falla:
       // asi GHL distingue "no te entendi" de "te entendi y Zoho no respondio".
       const mgapi = { estado: 'procesado', interpretado: resumenInterpretado(reclamo) };
+      // Con "completa" se le devuelve a GHL la respuesta de Zoho tal cual llego.
+      const reenviarRespuesta = entorno.ZOHO_RESPUESTA_A_GHL === 'completa';
 
       if (!consumirPresupuesto()) {
         peticion.log.error({ idCorrelacion }, 'presupuesto_diario_agotado');
@@ -123,8 +125,7 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
             estado: 'aceptado',
             codigo: zoho.codigo,
             detalle: zoho.detalle,
-            // Solo mientras se integra: la respuesta completa de Zoho sin filtrar.
-            ...(entorno.MODO_CAPTURA ? { respuestaCruda: resultado.datos } : {}),
+            ...(reenviarRespuesta ? { respuesta: resultado.datos } : {}),
           },
         });
       }
@@ -136,7 +137,14 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
           error: 'reclamo_rechazado',
           idCorrelacion,
           mgapi,
-          zoho: { estado: 'rechazado', codigo: resultado.codigoZoho ?? 'sin_codigo' },
+          zoho: {
+            estado: 'rechazado',
+            codigo: resultado.codigoZoho ?? 'sin_codigo',
+            // Aqui es donde mas sirve: es lo que explica por que Zoho rechazo.
+            ...(reenviarRespuesta && resultado.datosZoho !== undefined
+              ? { respuesta: resultado.datosZoho }
+              : {}),
+          },
         });
       }
 
