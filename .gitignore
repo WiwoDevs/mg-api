@@ -4,6 +4,8 @@
 node_modules/
 dist/
 datos/
+# Ajustes propios de cada servidor. Docker Compose lo mezcla solo si existe.
+compose.override.yml
 graphify-out/
 *.log
 *.sqlite
