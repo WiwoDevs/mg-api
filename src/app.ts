@@ -5,6 +5,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { claveCifradoCola, entorno } from './env.ts';
 import { ColaReintentos } from './cola/cola.ts';
+import { RegistroDiagnostico } from './diagnostico/registro.ts';
 import { allowlistActiva } from './security/perimetro.ts';
 import { rutaCaptura } from './routes/captura.ts';
 import { rutaReclamos } from './routes/reclamos.ts';
@@ -65,6 +66,16 @@ export async function construirServidor(opciones: OpcionesServidor = {}): Promis
       retencionMuertosDias: entorno.COLA_RETENCION_MUERTOS_DIAS,
     });
   const enviar = opciones.enviar ?? enviarReclamo;
+  // Solo existe si esta encendido: apagado, no se guarda ni un cuerpo.
+  const diagnostico = entorno.DIAGNOSTICO_ENTRADA
+    ? (opciones.diagnostico ??
+      new RegistroDiagnostico({
+        archivo: entorno.DIAGNOSTICO_ARCHIVO,
+        clave: claveCifradoCola,
+        maximo: entorno.DIAGNOSTICO_MAXIMO,
+        retencionHoras: entorno.DIAGNOSTICO_RETENCION_HORAS,
+      }))
+    : undefined;
 
   const app = Fastify({
     // Solo se cree la cabecera X-Forwarded-For si viene de Caddy. Con 'true'
@@ -97,8 +108,21 @@ export async function construirServidor(opciones: OpcionesServidor = {}): Promis
     try {
       listo(null, texto.length > 0 ? JSON.parse(texto) : {});
     } catch {
+      // Un JSON roto se rechaza aqui, antes de la ruta, asi que es el unico
+      // lugar donde se puede dejar registro de que llego. Pasa cuando el
+      // origen arma el JSON pegando texto del usuario sin escapar comillas.
+      diagnostico?.registrar({
+        idCorrelacion: String(peticion.id),
+        forma: 'JSON invalido: no se pudo interpretar',
+        campos: [{ campo: '', mensaje: 'el cuerpo no es JSON valido' }],
+        cuerpoRecibido: texto,
+      });
+
       // El mensaje del parser puede incluir un fragmento del cuerpo: se descarta.
-      const error = Object.assign(new Error('json_invalido'), { statusCode: 400 });
+      const error = Object.assign(new Error('json_invalido'), {
+        statusCode: 400,
+        code: 'JSON_INVALIDO',
+      });
 
       listo(error, undefined);
     }
@@ -124,6 +148,15 @@ export async function construirServidor(opciones: OpcionesServidor = {}): Promis
     // Se registra el codigo, nunca el mensaje: puede traer fragmentos del cuerpo.
     peticion.log.error({ idCorrelacion: peticion.id, estado, codigo: error.code ?? error.name }, 'error_manejado');
 
+    // Un JSON roto se nombra como tal: "solicitud invalida" no dice donde mirar.
+    if (error.code === 'JSON_INVALIDO') {
+      return respuesta.code(400).send({
+        error: 'json_invalido',
+        forma: 'el cuerpo no es JSON valido',
+        pista: 'suele pasar cuando el texto del usuario trae comillas y rompe el JSON',
+      });
+    }
+
     return respuesta.code(estado).send({ error: MENSAJE_POR_ESTADO[estado] ?? 'error_interno' });
   });
 
@@ -131,7 +164,14 @@ export async function construirServidor(opciones: OpcionesServidor = {}): Promis
 
   app.get('/salud', async () => ({ estado: 'ok', pendientes: cola.pendientes() }));
 
-  await app.register(rutaReclamos({ cola, enviar }), { prefix: '/v1' });
+  await app.register(rutaReclamos({ cola, enviar, diagnostico }), { prefix: '/v1' });
+
+  if (diagnostico) {
+    app.log.warn(
+      'DIAGNOSTICO_ENTRADA activo: los reclamos rechazados se guardan cifrados y se leen en ' +
+        'GET /v1/diagnostico. Apagalo cuando termines de depurar.',
+    );
+  }
 
   if (entorno.MODO_CAPTURA) {
     await app.register(rutaCaptura(), { prefix: '/v1' });
@@ -154,7 +194,10 @@ export async function construirServidor(opciones: OpcionesServidor = {}): Promis
 
   app.decorate('cola', cola);
   cola.iniciar(enviar);
-  app.addHook('onClose', async () => cola.cerrar());
+  app.addHook('onClose', async () => {
+    cola.cerrar();
+    diagnostico?.cerrar();
+  });
 
   return app;
 }

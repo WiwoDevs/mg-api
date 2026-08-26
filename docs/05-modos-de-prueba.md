@@ -94,6 +94,66 @@ captura esa variable va vacía, que es su valor por defecto.
 
 ---
 
+## Diagnóstico de entrada
+
+Para saber **qué llegó exactamente** cuando un reclamo se rechaza, sin depender de lo que muestre GHL.
+
+```bash
+DIAGNOSTICO_ENTRADA=true
+```
+
+Con eso, cada reclamo rechazado se guarda cifrado y se lee después:
+
+```bash
+curl -s -H "X-Mgapi-Key: $MGAPI_KEY" https://<DOMINIO>/v1/diagnostico | jq
+```
+
+```json
+{
+  "total": 2,
+  "rechazos": [
+    {
+      "recibidoEn": "2026-08-26T23:03:36.000Z",
+      "forma": "objeto con claves: body",
+      "campos": [{ "campo": "contacto", "mensaje": "expected object, received undefined" }],
+      "cuerpoRecibido": "{\"body\":\"{...}\"}"
+    }
+  ]
+}
+```
+
+`forma` es la pieza clave: dice si el cuerpo llegó vacío, envuelto en otra clave, o con otros nombres
+de campo, sin exponer ningún valor. **Esa línea sola aparece siempre en el log y en la respuesta 400,
+esté el diagnóstico encendido o no**, porque no contiene datos personales.
+
+### Cubre también el JSON roto
+
+Un cuerpo que ni siquiera es JSON válido lo rechaza Fastify antes de llegar a la ruta. Antes eso
+devolvía un `solicitud_invalida` genérico y no dejaba rastro. Ahora responde:
+
+```json
+{
+  "error": "json_invalido",
+  "pista": "suele pasar cuando el texto del usuario trae comillas y rompe el JSON"
+}
+```
+
+y el cuerpo queda igualmente guardado. Es el caso típico cuando el origen arma el JSON pegando texto
+del usuario sin escapar las comillas.
+
+### Apagarlo
+
+Guarda datos personales, así que es temporal. Se limita solo —últimos `DIAGNOSTICO_MAXIMO`, borrado a
+las `DIAGNOSTICO_RETENCION_HORAS`— pero conviene apagarlo al terminar:
+
+```bash
+DIAGNOSTICO_ENTRADA=false
+```
+
+Un reclamo aceptado nunca se guarda: solo los rechazados.
+
+---
+
 ## Modo sin Zoho
 
 Para operar el endpoint real sin tener credenciales de Zoho todavía.
