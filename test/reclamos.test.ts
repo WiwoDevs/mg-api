@@ -18,6 +18,8 @@ process.env.COLA_ARCHIVO = join(carpetaTemporal, 'cola.sqlite');
 process.env.COLA_CLAVE_CIFRADO = Buffer.alloc(32, 7).toString('base64');
 process.env.COLA_INTERVALO_MS = '3600000';
 process.env.LIMITE_POR_MINUTO = '10000';
+// Este archivo cubre el modo cerrado: solo la lista blanca vuelve a GHL.
+process.env.ZOHO_RESPUESTA_A_GHL = 'filtrada';
 
 const { construirServidor } = await import('../src/app.ts');
 const { reiniciarPresupuesto } = await import('../src/upstream/cliente.ts');
@@ -119,7 +121,7 @@ describe('validacion de entrada', () => {
 });
 
 describe('reenvio a la API externa', () => {
-  test('la respuesta a GHL solo trae los campos de la lista blanca', async () => {
+  test('con ZOHO_RESPUESTA_A_GHL=filtrada solo vuelve la lista blanca', async () => {
     reiniciarPresupuesto();
     respuestaSimulada = {
       ok: true,
@@ -144,7 +146,7 @@ describe('reenvio a la API externa', () => {
     assert.equal(cuerpo.zoho.detalle.estado, 'ingresado');
     assert.ok(!('rutTitular' in cuerpo.zoho.detalle), 'no debe filtrar campos ajenos a la lista blanca');
     assert.ok(!respuesta.body.includes('secreto-de-la-api-externa'));
-    assert.ok(!('respuestaCruda' in cuerpo.zoho), 'la respuesta cruda solo sale en modo captura');
+    assert.ok(!('respuesta' in cuerpo.zoho), 'en modo filtrada no se reenvia la respuesta');
   });
 
   test('un error 500 de la API externa no aparece textual en la respuesta', async () => {

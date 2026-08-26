@@ -26,7 +26,13 @@ const payload = JSON.parse(readFileSync('test/fixtures/webhook-ghl.json', 'utf8'
 
 type Resultado =
   | { ok: true; datos: unknown }
-  | { ok: false; reintentable: boolean; detalle: string; codigoZoho?: string };
+  | {
+      ok: false;
+      reintentable: boolean;
+      detalle: string;
+      codigoZoho?: string;
+      datosZoho?: unknown;
+    };
 
 let respuestaSimulada: Resultado;
 
@@ -164,14 +170,38 @@ describe('quien hizo que', () => {
     assert.ok(!('zoho' in cuerpo), 'no se llamo a Zoho, no se habla por el');
   });
 
-  test('la respuesta cruda de Zoho no sale fuera del modo captura', async () => {
+  test('la respuesta de Zoho se reenvia tal cual a GHL', async () => {
+    const deZoho = { code: 'success', details: { output: '{"folio":"F-1"}' }, idCaso: '99' };
+
+    respuestaSimulada = { ok: true, datos: deZoho };
+
+    const cuerpo = (await pedir()).json();
+
+    // Ademas del detalle filtrado, GHL recibe lo que contesto Zoho sin recortar.
+    assert.deepEqual(cuerpo.zoho.respuesta, deZoho);
+    assert.equal(cuerpo.zoho.detalle.folio, 'F-1');
+  });
+
+  test('un rechazo tambien reenvia lo que dijo Zoho', async () => {
+    const deZoho = {
+      code: 'INVALID_DATA',
+      details: {},
+      message: "Value is empty and 'get' function cannot be applied",
+    };
+
     respuestaSimulada = {
-      ok: true,
-      datos: { code: 'success', details: { output: '{"folio":"F-1"}' }, interno: 'ajeno' },
+      ok: false,
+      reintentable: false,
+      detalle: 'Zoho respondio codigo "INVALID_DATA"',
+      codigoZoho: 'INVALID_DATA',
+      datosZoho: deZoho,
     };
 
     const respuesta = await pedir();
+    const cuerpo = respuesta.json();
 
-    assert.ok(!respuesta.body.includes('ajeno'));
+    assert.equal(respuesta.statusCode, 422);
+    // Es el caso donde mas sirve: explica por que Zoho no acepto el reclamo.
+    assert.deepEqual(cuerpo.zoho.respuesta, deZoho);
   });
 });
