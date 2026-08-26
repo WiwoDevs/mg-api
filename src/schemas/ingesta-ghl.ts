@@ -138,6 +138,31 @@ function elegirDelGrupo(grupo: Record<string, string>, campo: string): string | 
 type ResultadoIngesta = { ok: true; reclamo: Reclamo } | { ok: false; errores: ErrorCampo[] };
 
 /**
+ * Saca el reclamo de la envoltura {"body": "<json>"}.
+ *
+ * GHL envuelve asi el cuerpo cuando el JSON se carga en su seccion de pares
+ * clave/valor en vez de en el cuerpo crudo, y en ese caso ignora el cuerpo
+ * crudo por completo. Se acepta para que una diferencia de configuracion en
+ * el formulario no cueste un reclamo.
+ *
+ * @param cuerpo cuerpo de la peticion, sin confiar en su forma
+ */
+function desenvolver(cuerpo: unknown): unknown {
+  if (typeof cuerpo !== 'object' || cuerpo === null) return cuerpo;
+
+  const envoltura = (cuerpo as { body?: unknown }).body;
+
+  if (typeof envoltura !== 'string') return cuerpo;
+
+  try {
+    return JSON.parse(envoltura);
+  } catch {
+    // No era JSON: se devuelve tal cual para que el esquema explique el error.
+    return cuerpo;
+  }
+}
+
+/**
  * Convierte el cuerpo de GHL en el reclamo limpio, aplicando la regla de
  * seleccion por nombre. No valida formatos: de eso se encarga esquemaReclamo.
  *
@@ -239,7 +264,7 @@ export function transformarDesdeGhl(payload: PayloadGhl): { valor: unknown; erro
  * @param cuerpo cuerpo de la peticion, sin confiar en su forma
  */
 export function procesarPayloadGhl(cuerpo: unknown): ResultadoIngesta {
-  const payload = esquemaPayloadGhl.safeParse(cuerpo);
+  const payload = esquemaPayloadGhl.safeParse(desenvolver(cuerpo));
 
   if (!payload.success) {
     return {
