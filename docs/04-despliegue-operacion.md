@@ -45,7 +45,8 @@ echo "COLA_CLAVE_CIFRADO=$(openssl rand -base64 32)" >> .env
 chmod 600 .env
 ```
 
-Completar a mano en `.env`: `DOMINIO`, `UPSTREAM_URL` y `UPSTREAM_TOKEN`.
+Completar a mano en `.env`: `DOMINIO`, `UPSTREAM_URL` y las tres credenciales de Zoho
+(`ZOHO_CLIENT_ID`, `ZOHO_CLIENT_SECRET`, `ZOHO_REFRESH_TOKEN`), que salen de `api-console.zoho.com`.
 
 `IPS_GHL` es opcional y va vacía por defecto. GHL no publica IP de salida estables, así que la allowlist
 suma una capa solo si el proveedor entrega un rango fijo. Con la variable vacía, Caddy deja pasar y la
@@ -115,7 +116,13 @@ camino durante el reinicio.
 ventana de segundos en que GHL usa la clave nueva y mgAPI todavía la vieja: hacerlo en horario de bajo
 tráfico, o aceptar que GHL reintente.
 
-**`UPSTREAM_TOKEN`** — según lo que permita el proveedor externo. Cambiar en `.env` y reiniciar.
+**`ZOHO_REFRESH_TOKEN`, `ZOHO_CLIENT_SECRET`** — en `api-console.zoho.com`. El refresh token **no
+expira**: se revoca desde ahí. Cambiar en `.env` y reiniciar; el access token en memoria se descarta al
+reiniciar y se pide uno nuevo en el primer reclamo.
+
+Estas credenciales dan acceso completo de lectura y escritura al CRM. Rotarlas de inmediato si
+aparecieron alguna vez en un chat, un ticket, una captura de pantalla o la configuración de un webhook
+de terceros.
 
 **`COLA_CLAVE_CIFRADO`** — **vaciar la cola primero.** Lo que esté cifrado con la clave vieja no se puede
 recuperar con la nueva: al fallar el descifrado, esos reclamos pasan a la cola muerta.
@@ -125,15 +132,15 @@ recuperar con la nueva: al fallar el descifrado, esos reclamos pasan a la cola m
 docker compose exec mgapi node -e "fetch('http://127.0.0.1:3000/salud').then(r=>r.json()).then(s=>console.log(s.pendientes))"
 ```
 
-Rotar `MGAPI_KEY` y `UPSTREAM_TOKEN` cada 90 días, y de inmediato ante cualquier sospecha.
+Rotar `MGAPI_KEY` y las credenciales de Zoho cada 90 días, y de inmediato ante cualquier sospecha.
 
 ## Si hay un incidente
 
 1. **Cortar el paso.** Poner `IPS_GHL=127.0.0.1` en `.env` y `docker compose up -d`: no entra nadie, y
    la cola conserva lo que ya estaba dentro. Ojo: dejar la variable *vacía* hace lo contrario, deja
    pasar a todos.
-2. **Rotar `MGAPI_KEY` y `UPSTREAM_TOKEN`.** El token de la API externa primero: es el que permite actuar
-   en nuestro nombre fuera de nuestra infraestructura.
+2. **Rotar `MGAPI_KEY` y las credenciales de Zoho.** Las de Zoho primero: son las que permiten actuar en
+   nuestro nombre fuera de nuestra infraestructura, y el refresh token no caduca solo.
 3. **Revisar el alcance.** `docker compose logs mgapi | grep autenticacion_rechazada` muestra los
    intentos fallidos. Los logs no contienen datos personales por diseño, así que no hay que revisarlos en
    busca de filtraciones: hay que revisar qué llegó a la API externa.

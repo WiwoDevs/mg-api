@@ -47,7 +47,15 @@ const esquemaEntorno = z.object({
   // GHL antes de tener credenciales. Ver docs/05-modos-de-prueba.md
   UPSTREAM_ACTIVO: z.enum(['true', 'false']).default('true').transform((valor) => valor === 'true'),
   UPSTREAM_URL: urlAbsoluta.optional(),
-  UPSTREAM_TOKEN: z.string().min(1).optional(),
+
+  // Credenciales OAuth de Zoho. Viven solo aqui: GHL no debe volver a verlas.
+  // El dominio cambia segun el centro de datos: .com, .eu, .in, .com.au
+  ZOHO_CUENTAS_URL: urlAbsoluta.default('https://accounts.zoho.com'),
+  ZOHO_CLIENT_ID: z.string().min(1).optional(),
+  ZOHO_CLIENT_SECRET: z.string().min(1).optional(),
+  ZOHO_REFRESH_TOKEN: z.string().min(1).optional(),
+  // Cuanto antes de que venza se renueva el token, para que ninguno caduque en vuelo.
+  ZOHO_MARGEN_SEGUNDOS: z.coerce.number().int().positive().default(60),
   UPSTREAM_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   UPSTREAM_PRESUPUESTO_DIARIO: z.coerce.number().int().positive().default(1000),
 
@@ -89,12 +97,18 @@ function cargarEntorno(): z.infer<typeof esquemaEntorno> {
   }
 
   // Las credenciales de Zoho solo son obligatorias si de verdad se va a llamar.
-  if (resultado.data.UPSTREAM_ACTIVO && (!resultado.data.UPSTREAM_URL || !resultado.data.UPSTREAM_TOKEN)) {
-    console.error(
-      'Configuracion invalida: UPSTREAM_ACTIVO=true requiere UPSTREAM_URL y UPSTREAM_TOKEN. ' +
-        'Para probar sin Zoho, usa UPSTREAM_ACTIVO=false.',
-    );
-    process.exit(1);
+  if (resultado.data.UPSTREAM_ACTIVO) {
+    const faltantes = (
+      ['UPSTREAM_URL', 'ZOHO_CLIENT_ID', 'ZOHO_CLIENT_SECRET', 'ZOHO_REFRESH_TOKEN'] as const
+    ).filter((nombre) => !resultado.data[nombre]);
+
+    if (faltantes.length > 0) {
+      console.error(
+        `Configuracion invalida: UPSTREAM_ACTIVO=true requiere ${faltantes.join(', ')}. ` +
+          'Para probar sin Zoho, usa UPSTREAM_ACTIVO=false.',
+      );
+      process.exit(1);
+    }
   }
 
   return resultado.data;

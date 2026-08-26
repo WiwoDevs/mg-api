@@ -5,8 +5,9 @@ Este documento describe qué se está protegiendo, de quién, y qué hace cada c
 ## Qué hay que proteger
 
 1. **Los datos personales del reclamante** — nombre, RUT, email, teléfono, y los datos del vehículo.
-2. **Las credenciales de la API externa** — el token que permite hablar con ella. Si se filtra, el
-   atacante ya no necesita mgAPI: habla directo con la API externa en nuestro nombre.
+2. **Las credenciales de Zoho** — `client_secret` y `refresh_token`. Si se filtran, el atacante ya no
+   necesita mgAPI: habla directo con el CRM en nuestro nombre. El refresh token **no expira**, así que
+   una filtración dura hasta que alguien lo revoque a mano.
 3. **La disponibilidad y el presupuesto** — si la API externa cobra por consulta, un abuso no solo
    filtra datos: vacía la cuenta.
 
@@ -116,11 +117,27 @@ cabeceras sensibles esté donde esté, por si alguien registra de más en el fut
 Los mensajes de error tampoco se registran: el error de JSON inválido de Node puede incluir un fragmento
 del cuerpo recibido. Se registra el código del error, no su texto.
 
-### 7. Salida hacia la API externa
+### 7. Salida hacia Zoho
+
+**El refresh token de Zoho vive solo en el servidor.** Antes lo guardaba GoHighLevel dentro de la
+configuración del webhook, donde lo veía cualquiera con acceso a esa cuenta y no se podía rotar sin
+editar el flujo. mgAPI pide el access token por su cuenta y GHL no vuelve a ver una credencial de Zoho.
+
+El access token dura una hora y se guarda en memoria, nunca en disco. Se renueva solo cuando está por
+vencer, con un margen configurable para que ninguno caduque en vuelo. Si llegan varios reclamos a la vez
+con el token vencido, se hace **una sola** petición de token: las demás esperan esa.
+
+Un `401` de Zoho descarta el token guardado y reintenta una vez con uno nuevo, por si caducó antes de lo
+que decía. Dos `401` seguidos cortan: el reclamo queda en cola en vez de girar en un bucle.
+
+Un error de credenciales (`invalid_client` y similares) se marca **no reintentable**: reintentar no
+arregla una credencial mala, y encolar un reclamo que nunca va a entrar solo esconde el problema. Ojo con
+esto: Zoho responde `HTTP 200` aunque falle, con el error dentro del cuerpo, así que mirar el código de
+estado no alcanza.
 
 Timeout configurable. `redirect: 'error'`: una redirección maliciosa no puede desviar el token a otro
 host, porque el cliente corta en vez de seguirla. El cuerpo de una respuesta con error se descarta sin
-leerlo.
+leerlo, y el token nunca aparece en un log ni en el detalle de un error.
 
 ### 8. Respuesta hacia GHL
 

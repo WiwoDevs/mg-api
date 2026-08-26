@@ -102,7 +102,8 @@ Para operar el endpoint real sin tener credenciales de Zoho todavía.
 UPSTREAM_ACTIVO=false
 ```
 
-Con eso, `UPSTREAM_URL` y `UPSTREAM_TOKEN` pasan a ser opcionales y **la API arranca sin ellas**. Con
+Con eso, `UPSTREAM_URL` y las tres credenciales de Zoho pasan a ser opcionales y **la API arranca sin
+ellas**. Con
 `UPSTREAM_ACTIVO=true` vuelven a ser obligatorias y el proceso no parte si faltan: no se despliega a
 producción a medias por accidente.
 
