@@ -170,6 +170,24 @@ export function resolverCatalogo(reclamo: Reclamo): ResultadoCatalogo {
 }
 
 /**
+ * Lo que mgAPI resolvio por su cuenta, para que GHL pueda confirmarlo.
+ *
+ * Son los cuatro valores que la seleccion por nombre y el catalogo decidieron,
+ * y los unicos que GHL no sabe de antemano. El resto del reclamo no se devuelve:
+ * GHL ya lo mando, y repetirlo solo lo escribiria de nuevo en sus registros.
+ *
+ * @param reclamo reclamo ya validado y resuelto contra el catalogo
+ */
+export function resumenInterpretado(reclamo: Reclamo): Record<string, string> {
+  return {
+    serie: reclamo.vehiculo.serie,
+    variante: reclamo.vehiculo.variante,
+    concesionario: reclamo.concesionario.nombre,
+    sucursal: reclamo.concesionario.sucursal,
+  };
+}
+
+/**
  * Unicos campos de la API externa que pueden llegar a GHL.
  * Lo que no esta aqui no sale: la regla es denegar por defecto.
  */

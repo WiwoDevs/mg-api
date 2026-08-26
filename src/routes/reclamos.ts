@@ -1,10 +1,11 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { verificarClave, verificarFirma } from '../security/autenticacion.ts';
 import { estaBloqueada, ipPermitida, limpiarFallos, registrarFallo } from '../security/perimetro.ts';
-import { mapearRespuesta } from '../schemas/reclamo.ts';
+import { resumenInterpretado } from '../schemas/reclamo.ts';
 import { procesarPayloadGhl } from '../schemas/ingesta-ghl.ts';
-import { mapearAZoho } from '../upstream/zoho.ts';
+import { interpretarRespuestaZoho, mapearAZoho } from '../upstream/zoho.ts';
 import { consumirPresupuesto } from '../upstream/cliente.ts';
+import { entorno } from '../env.ts';
 import type { ColaReintentos } from '../cola/cola.ts';
 import type { Reclamo } from '../schemas/reclamo.ts';
 import type { ResultadoUpstream } from '../upstream/cliente.ts';
@@ -87,6 +88,9 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
 
       const reclamo = ingesta.reclamo;
       const idCorrelacion = String(peticion.id);
+      // Lo que mgAPI resolvio. Viaja en toda respuesta, incluso si Zoho falla:
+      // asi GHL distingue "no te entendi" de "te entendi y Zoho no respondio".
+      const mgapi = { estado: 'procesado', interpretado: resumenInterpretado(reclamo) };
 
       if (!consumirPresupuesto()) {
         peticion.log.error({ idCorrelacion }, 'presupuesto_diario_agotado');
@@ -102,31 +106,49 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
         return respuesta.code(200).send({
           estado: 'simulado',
           idCorrelacion,
-          mensaje: 'UPSTREAM_ACTIVO=false: no se envio nada a Zoho.',
+          mgapi,
+          zoho: { estado: 'no_consultado', motivo: 'UPSTREAM_ACTIVO=false' },
           seHabriaEnviado: mapearAZoho(reclamo),
         });
       }
 
       if (resultado.ok) {
-        // El resumen va anidado para que un campo de la API externa no pueda
-        // pisar los campos propios de esta respuesta.
+        const zoho = interpretarRespuestaZoho(resultado.datos);
+
         return respuesta.code(200).send({
           estado: 'recibido',
           idCorrelacion,
-          resumen: mapearRespuesta(resultado.datos),
+          mgapi,
+          zoho: {
+            estado: 'aceptado',
+            codigo: zoho.codigo,
+            detalle: zoho.detalle,
+            // Solo mientras se integra: la respuesta completa de Zoho sin filtrar.
+            ...(entorno.MODO_CAPTURA ? { respuestaCruda: resultado.datos } : {}),
+          },
         });
       }
 
       if (!resultado.reintentable) {
         peticion.log.warn({ idCorrelacion, detalle: resultado.detalle }, 'reclamo_rechazado_por_api_externa');
 
-        return respuesta.code(422).send({ error: 'reclamo_rechazado' });
+        return respuesta.code(422).send({
+          error: 'reclamo_rechazado',
+          idCorrelacion,
+          mgapi,
+          zoho: { estado: 'rechazado', codigo: resultado.codigoZoho ?? 'sin_codigo' },
+        });
       }
 
       cola.encolar(reclamo, idCorrelacion);
       peticion.log.warn({ idCorrelacion, detalle: resultado.detalle }, 'api_externa_no_disponible');
 
-      return respuesta.code(202).send({ estado: 'encolado', idCorrelacion });
+      return respuesta.code(202).send({
+        estado: 'encolado',
+        idCorrelacion,
+        mgapi,
+        zoho: { estado: 'no_disponible', motivo: 'se reintenta desde la cola' },
+      });
     });
   };
 }

@@ -5,7 +5,7 @@ import { invalidarCredencial, obtenerCredencial } from './zoho-auth.ts';
 
 export type ResultadoUpstream =
   | { ok: true; datos: unknown; simulado?: true }
-  | { ok: false; reintentable: boolean; detalle: string };
+  | { ok: false; reintentable: boolean; detalle: string; codigoZoho?: string };
 
 const presupuesto = { dia: '', usados: 0 };
 
@@ -69,11 +69,13 @@ function errorLogicoDeZoho(datos: unknown): ResultadoUpstream | undefined {
 
   if (typeof codigo !== 'string' || codigo === 'success') return undefined;
 
-  // El mensaje de Zoho no se reenvia: describe su logica interna.
+  // El mensaje de Zoho no se reenvia: describe su logica interna. El codigo si,
+  // porque es lo unico que le dice a GHL por que no entro el reclamo.
   return {
     ok: false,
     reintentable: !CODIGOS_DEFINITIVOS.has(codigo),
     detalle: `Zoho respondio codigo "${codigo}"`,
+    codigoZoho: codigo,
   };
 }
 

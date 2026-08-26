@@ -52,6 +52,29 @@ describe('catalogo', () => {
     }
   });
 
+  test('las etiquetas del formulario resuelven aunque la planilla las nombre distinto', () => {
+    // La planilla usa formato interno y el formulario muestra la etiqueta con
+    // espacios. Sin el puente por el campo de GHL, estos dos se rechazaban.
+    assert.equal(buscarSerie('MG ZS EV')?.serie, 'ZSEV');
+    assert.equal(buscarSerie('MG MARVEL R')?.serie, 'MARVELR');
+  });
+
+  test('las doce etiquetas del formulario resuelven', () => {
+    const etiquetas = [
+      'MG3', 'MG4', 'MG5', 'MG HS', 'MG GT', 'MG ZS',
+      'MG ZX', 'MG One', 'MG RX5', 'MG RX9', 'MG MARVEL R', 'MG ZS EV',
+    ];
+
+    for (const etiqueta of etiquetas) {
+      assert.ok(buscarSerie(etiqueta), `no resuelve ${etiqueta}`);
+    }
+  });
+
+  test('MG ZS y MG ZS EV siguen siendo series distintas', () => {
+    assert.equal(buscarSerie('MG ZS')?.serie, 'MGZS');
+    assert.equal(buscarSerie('MG ZS EV')?.serie, 'ZSEV');
+  });
+
   test('una variante se resuelve por coincidencia parcial cuando es unica', () => {
     const mg4 = buscarSerie('MG4');
 

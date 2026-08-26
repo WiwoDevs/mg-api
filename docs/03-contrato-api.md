@@ -52,21 +52,49 @@ Un valor vacío, o un literal `{{contact.algo}}` que GHL no alcanzó a reemplaza
 
 ### Respuestas
 
-**200 — entregado a la API externa.** Solo trae los campos de la lista blanca.
+**200 — entregado a Zoho.** La respuesta separa lo que hizo mgAPI de lo que contestó Zoho.
 
 ```json
 {
   "estado": "recibido",
   "idCorrelacion": "b3f1...",
-  "resumen": { "folio": "F-123", "estado": "ingresado" }
+  "mgapi": {
+    "estado": "procesado",
+    "interpretado": {
+      "serie": "MG4",
+      "variante": "MG 4 XPOWER",
+      "concesionario": "Bruno Fritsch",
+      "sucursal": "LA FLORIDA"
+    }
+  },
+  "zoho": {
+    "estado": "aceptado",
+    "codigo": "success",
+    "detalle": { "folio": "MG-1001", "estado": "abierto" }
+  }
 }
 ```
 
-**202 — la API externa no estaba disponible; el reclamo quedó en la cola cifrada y se reintenta solo.**
-Para GHL es un éxito: el reclamo no se perdió.
+`mgapi.interpretado` son los cuatro valores que la selección por nombre y el catálogo resolvieron: los
+únicos que GHL no sabía de antemano. El resto del reclamo no vuelve — GHL ya lo mandó, y repetirlo solo
+lo escribiría de nuevo en sus registros.
+
+`zoho.detalle` sale de `details.output`, que es donde Zoho envuelve lo que devuelve la función, y pasa
+por la misma lista blanca de siempre.
+
+Con `MODO_CAPTURA=true` se agrega `zoho.respuestaCruda` con la respuesta completa de Zoho sin filtrar,
+para diagnosticar durante la integración.
+
+**202 — Zoho no estaba disponible; el reclamo quedó en la cola cifrada y se reintenta solo.** Para GHL
+es un éxito: el reclamo no se perdió, y `mgapi` confirma que se entendió bien.
 
 ```json
-{ "estado": "encolado", "idCorrelacion": "b3f1..." }
+{
+  "estado": "encolado",
+  "idCorrelacion": "b3f1...",
+  "mgapi": { "estado": "procesado", "interpretado": { "serie": "MG4", "...": "..." } },
+  "zoho": { "estado": "no_disponible", "motivo": "se reintenta desde la cola" }
+}
 ```
 
 **400 — entrada inválida.** Se devuelve el nombre del campo y el motivo, nunca el valor recibido.
@@ -89,13 +117,18 @@ El nombre del campo apunta al lugar exacto de GHL que hay que corregir.
 | 401 | `{"error": "no_autorizado"}` | Clave ausente, incorrecta, firma inválida, o IP fuera de la allowlist |
 | 413 | `{"error": "cuerpo_demasiado_grande"}` | Sobre 32 KB |
 | 415 | `{"error": "tipo_no_soportado"}` | `Content-Type` distinto de `application/json` |
-| 422 | `{"error": "reclamo_rechazado"}` | La API externa lo rechazó de forma definitiva |
+| 422 | `{"error": "reclamo_rechazado", "mgapi": {...}, "zoho": {"estado": "rechazado", "codigo": "INVALID_DATA"}}` | Zoho lo rechazó de forma definitiva. El código dice por qué; el mensaje interno de Zoho no se reenvía |
 | 429 | `{"error": "demasiadas_solicitudes"}` | Límite de tasa por IP, o IP bloqueada por claves incorrectas seguidas |
 | 429 | `{"error": "presupuesto_agotado"}` | Se agotó el presupuesto diario de llamadas |
 | 500 | `{"error": "error_interno"}` | Falla nuestra. El detalle queda solo en los logs |
 
 Los mensajes de error son genéricos a propósito. El detalle real queda en el log del servidor,
 identificable por `idCorrelacion`.
+
+**Cómo leer la respuesta desde GHL.** El bloque `mgapi` responde "¿entendiste el reclamo?" y el bloque
+`zoho` responde "¿qué dijo Zoho?". Un 400 no trae bloque `zoho` porque nunca se llamó: el problema es el
+dato que mandó GHL. Un 202 o un 422 traen `mgapi.estado: "procesado"`, que es la forma de saber que el
+reclamo estaba bien y el problema fue de Zoho.
 
 ## GET /salud
 

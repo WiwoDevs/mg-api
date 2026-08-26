@@ -152,17 +152,26 @@ export function transformarDesdeGhl(payload: PayloadGhl): { valor: unknown; erro
   if (!serie) {
     errores.push({ campo: 'vehiculo.modelo_del_auto', mensaje: 'falta el modelo del vehiculo' });
   } else {
-    // El nombre del campo sale del modelo, asi que un modelo desconocido se
-    // detecta aqui y no como una variante misteriosamente ausente.
-    const campo = buscarSerie(serie)?.campoGhl ?? slugGhl(serie);
+    const modelo = buscarSerie(serie);
 
-    variante = elegirDelGrupo(payload.variante_por_modelo, campo);
-
-    if (!variante) {
+    // Un modelo desconocido se nombra como tal. Si no, el error hablaria de una
+    // variante ausente y mandaria a buscar el problema donde no esta.
+    if (!modelo) {
       errores.push({
-        campo: `variante_por_modelo.${campo}`,
-        mensaje: `no hay variante cargada para el modelo ${serie}`,
+        campo: 'vehiculo.modelo_del_auto',
+        mensaje: `modelo desconocido en el catalogo MG: ${serie}`,
       });
+    } else {
+      const campo = modelo.campoGhl ?? slugGhl(serie);
+
+      variante = elegirDelGrupo(payload.variante_por_modelo, campo);
+
+      if (!variante) {
+        errores.push({
+          campo: `variante_por_modelo.${campo}`,
+          mensaje: `no hay variante cargada para el modelo ${serie}`,
+        });
+      }
     }
   }
 

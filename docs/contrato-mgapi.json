@@ -149,13 +149,13 @@
     }
   },
   "respuestas": {
-    "200": "Entregado a Zoho. Devuelve estado 'recibido' y un resumen filtrado por lista blanca.",
-    "202": "Zoho no estaba disponible. El reclamo quedo en la cola cifrada y se reintenta solo. Para GHL es un exito.",
-    "400": "entrada_invalida. Incluye los nombres de campo y el motivo, nunca el valor recibido.",
+    "200": "Entregado a Zoho. Trae el bloque mgapi con lo que se interpreto y el bloque zoho con lo que contesto Zoho.",
+    "202": "Zoho no estaba disponible. El reclamo quedo en la cola cifrada y se reintenta solo. Para GHL es un exito, y mgapi confirma que se entendio bien.",
+    "400": "entrada_invalida. Incluye los nombres de campo y el motivo, nunca el valor recibido. No trae bloque zoho porque nunca se le llamo.",
     "401": "no_autorizado. Clave ausente o incorrecta, firma invalida, o IP fuera de la allowlist.",
     "413": "cuerpo_demasiado_grande. Sobre 32 KB.",
     "415": "tipo_no_soportado. Content-Type distinto de application/json.",
-    "422": "reclamo_rechazado. Zoho lo rechazo de forma definitiva.",
+    "422": "reclamo_rechazado. Zoho lo rechazo de forma definitiva; zoho.codigo dice por que.",
     "429": "demasiadas_solicitudes o presupuesto_agotado.",
     "500": "error_interno. El detalle queda solo en los logs del servidor."
   },
@@ -173,6 +173,12 @@
     "caso": "El caso viaja como ARGUMENTO en la URL, no como cuerpo. Mandarlo en el cuerpo deja el argumento vacio y la funcion falla con \"Value is empty and get function cannot be applied\".",
     "cuerpo": "Datos de contacto: id, name, email, phone. Subconjunto de lo que ya va en el caso.",
     "erroresConCodigoDeExito": "El endpoint responde HTTP 200 aunque la funcion falle, con el detalle en el cuerpo. INVALID_DATA, MANDATORY_NOT_FOUND e INVALID_URL_PATTERN se tratan como definitivos; el resto se reintenta."
+  },
+  "formaDeLaRespuesta": {
+    "principio": "El bloque mgapi responde si se entendio el reclamo; el bloque zoho responde que dijo Zoho. Asi GHL distingue un problema de dato de una caida de Zoho.",
+    "mgapi.interpretado": "Serie, variante, concesionario y sucursal: los cuatro valores que resolvio la seleccion por nombre y el catalogo, y los unicos que GHL no sabia de antemano.",
+    "zoho.detalle": "Sale de details.output, donde Zoho envuelve lo que devuelve la funcion, filtrado por la lista blanca.",
+    "zoho.respuestaCruda": "Solo con MODO_CAPTURA=true: la respuesta completa de Zoho sin filtrar, para diagnosticar durante la integracion."
   },
   "catalogo": {
     "fuentes": [

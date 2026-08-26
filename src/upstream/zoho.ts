@@ -1,11 +1,52 @@
+import { mapearRespuesta } from '../schemas/reclamo.ts';
 import type { Reclamo } from '../schemas/reclamo.ts';
 
 /**
- * Traduccion del reclamo limpio a los nombres de campo que espera Zoho.
+ * Traduccion del reclamo limpio a los nombres de campo que espera Zoho, y
+ * lectura de lo que Zoho contesta.
  *
  * Es el unico lugar donde aparecen los nombres cf_*. Si Zoho renombra un campo,
  * se cambia aqui y nada mas.
  */
+
+/** Lo que Zoho contesto, ya interpretado y filtrado. */
+export type RespuestaZoho = {
+  codigo: string;
+  detalle: Record<string, string | number | boolean>;
+};
+
+/**
+ * Saca el resultado util de la respuesta de una funcion de Zoho.
+ *
+ * Zoho envuelve lo que devuelve la funcion en details.output, casi siempre como
+ * texto JSON. Ahi adentro esta el folio; el resto de la envoltura no aporta.
+ *
+ * @param datos cuerpo ya parseado de la respuesta de Zoho
+ */
+export function interpretarRespuestaZoho(datos: unknown): RespuestaZoho {
+  if (typeof datos !== 'object' || datos === null) {
+    return { codigo: 'sin_codigo', detalle: {} };
+  }
+
+  const cuerpo = datos as { code?: unknown; details?: unknown };
+  const codigo = typeof cuerpo.code === 'string' ? cuerpo.code : 'sin_codigo';
+  const detalles = cuerpo.details as { output?: unknown } | undefined;
+  const salida = detalles?.output;
+
+  let contenido: unknown = salida;
+
+  if (typeof salida === 'string') {
+    try {
+      contenido = JSON.parse(salida);
+    } catch {
+      // La funcion devolvio texto plano, no JSON: no hay campos que extraer.
+      contenido = undefined;
+    }
+  }
+
+  // Si la funcion no usa details.output, se busca en la raiz de la respuesta.
+  return { codigo, detalle: mapearRespuesta(contenido ?? datos) };
+}
 
 /** Cuerpo de la peticion: datos de contacto, aparte del caso. */
 export type ContactoZoho = {
