@@ -102,7 +102,9 @@
     "aclaracionClave": "modelo_del_auto es EL MODELO (MG4). Los trece campos del grupo variante_por_modelo son LA VARIANTE de su propio modelo: contact.mg4 guarda la variante del MG4. No son trece modelos alternativos.",
     "regla": "La variante que viaja a Zoho es variante_por_modelo[slug(modelo_del_auto)]. Se selecciona POR NOMBRE del campo, no por contenido. Los demas campos se ignoran esten llenos o vacios, asi el historico acumulado deja de interferir y no hace falta ninguna regla de desempate.",
     "reglaSucursal": "Identica para la sucursal: sucursal_por_concesionario[slug(nombre_convesionario)]. Pendiente de confirmar con el equipo.",
-    "slug": "Quitar los caracteres acentuados (no transcribirlos), pasar a minusculas, y convertir en '_' todo lo que no sea letra o numero."
+    "slug": "Quitar los caracteres acentuados (no transcribirlos), pasar a minusculas, y convertir en '_' todo lo que no sea letra o numero.",
+    "origenDeLosDatos": "Se usa contact.*, no form.*, porque form.* no esta disponible. El contacto acumula respuestas de reclamos anteriores, asi que la seleccion por nombre no es una segunda red: es la unica defensa.",
+    "limiteConocido": "Si el reclamo nuevo es del mismo modelo que uno anterior y la variante queda en blanco, el contacto conserva la variante vieja y viaja como si fuera actual. No es detectable desde la API: llega un valor coherente, del campo correcto, para el modelo declarado. Se cierra haciendo obligatoria la variante en el formulario."
   },
   "esquemaReclamoLimpio": {
     "descripcion": "Forma que mgAPI valida despues de limpiar. Es estricta: un campo no declarado hace que la peticion se rechace con 400.",
@@ -164,7 +166,7 @@
     "Agregar ITALMOTORS al formulario: atiende posventa en Talca y Linares, y no aparece entre las opciones.",
     "Confirmar que campos exige Zoho de verdad, para decidir que se rechaza y que viaja incompleto.",
     "Crear en GHL los campos de las series que faltan y retirar los que sobran (ver desajustesConGhl).",
-    "Confirmar si el webhook debe leer form.* en vez de contact.*: el formulario no arrastra historico y el contacto si."
+    "Hacer obligatoria la variante en el formulario. Es lo unico que cierra el caso del valor viejo: si alguien reclama por el mismo modelo y deja la variante en blanco, el contacto conserva la del reclamo anterior y no hay forma de distinguirla de un dato recien ingresado."
   ],
   "llamadaAZoho": {
     "endpoint": "POST {UPSTREAM_URL}?auth_type=oauth&case=<caso en JSON>",

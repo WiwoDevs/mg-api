@@ -269,16 +269,29 @@ tres están mal:
 
 Las otras doce resuelven correctamente contra el catálogo.
 
-### `form.*` en vez de `contact.*`
+### Por qué `contact.*` y no `form.*` — decidido
 
-El webhook a Zoho leía `{{form.*}}`, no `{{contact.*}}`. La diferencia importa: **el formulario trae solo
-lo que la persona acaba de llenar, mientras que el contacto arrastra respuestas de reclamos anteriores.**
+El webhook anterior leía `{{form.*}}`, que habría sido mejor: el formulario trae solo lo que la persona
+acaba de llenar, mientras que el contacto arrastra respuestas de reclamos anteriores. Habría eliminado
+el histórico acumulado en el origen.
 
-Si `form.*` está disponible —lo está cuando el workflow lo dispara el envío del formulario— conviene
-usarlo en todo el cuerpo del webhook: el problema del histórico acumulado desaparece en el origen, y la
-selección por nombre pasa a ser una segunda red en vez de la única defensa.
+**No está disponible, así que se usa `contact.*`.** La selección por nombre deja de ser una segunda red y
+pasa a ser la única defensa contra el histórico. Ya está implementada y probada, y es la razón por la
+que el problema no llega a Zoho.
 
-Falta confirmarlo antes de cambiar [`webhook-ghl.json`](webhook-ghl.json), que hoy usa `contact.*`.
+#### El caso que ninguna regla puede resolver
+
+Con `contact.*` queda un hueco que conviene tener escrito, porque no se puede cerrar desde la API:
+
+> Si alguien reclamó un **MG4 XPOWER** el año pasado y hoy vuelve a reclamar por el **mismo MG4** pero
+> deja la variante en blanco, `contact.mg4` todavía tiene `XPOWER`. mgAPI lo lee y lo da por válido.
+
+No es distinguible de un dato recién ingresado: llega un valor coherente, del campo correcto, para el
+modelo declarado. La única señal sería la fecha de actualización del campo, y GHL no la expone en las
+variables del webhook.
+
+Se cierra en el formulario, no aquí: **hacer obligatoria la variante** en cada envío, para que nunca
+quede en blanco arrastrando el valor viejo. Mientras no lo sea, es un riesgo aceptado y conocido.
 
 ## Lo que falta para escribir la limpieza
 
