@@ -152,6 +152,36 @@ describe('campos de transicion', () => {
   });
 });
 
+describe('envoltura de GHL', () => {
+  test('acepta el reclamo envuelto en {"body": "<json>"}', () => {
+    // Es lo que manda GHL cuando el JSON se carga en su seccion clave/valor.
+    const resultado = procesar({ body: JSON.stringify(base) });
+
+    assert.ok(resultado.ok, 'una diferencia de configuracion no debe costar un reclamo');
+    assert.equal(resultado.zoho.cf_series, 'MG4');
+    assert.equal(resultado.zoho.cf_model, 'MG 4 XPOWER');
+  });
+
+  test('sigue aceptando el cuerpo directo, sin envoltura', () => {
+    const resultado = procesar(base);
+
+    assert.ok(resultado.ok);
+    assert.equal(resultado.zoho.cf_series, 'MG4');
+  });
+
+  test('una envoltura que no trae JSON no se traga el error', () => {
+    const resultado = procesar({ body: 'esto no es json' });
+
+    assert.equal(resultado.ok, false);
+  });
+
+  test('un campo llamado body que no es texto no confunde', () => {
+    const resultado = procesar({ ...base, body: { algo: 1 } });
+
+    assert.equal(resultado.ok, false, 'sigue siendo un campo no declarado');
+  });
+});
+
 describe('rechazos', () => {
   test('sin modelo declarado no se puede elegir variante', () => {
     const resultado = procesar(
