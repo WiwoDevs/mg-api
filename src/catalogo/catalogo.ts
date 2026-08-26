@@ -61,9 +61,29 @@ function indexar<T>(elementos: T[], clave: (elemento: T) => string): Map<string,
 const modelosPorSerie = indexar(catalogo.modelos, (m) => m.serie);
 const concesionariosPorNombre = indexar(catalogo.concesionarios, (c) => c.nombre);
 
+/**
+ * Segundo indice de series, por el nombre de su campo en GHL.
+ *
+ * La planilla nombra las series en formato interno ("ZSEV", "MARVELR") mientras
+ * el formulario muestra la etiqueta con espacios ("MG ZS EV", "MG MARVEL R").
+ * El campo de GHL es el puente: se llama mg_zs_ev, que normalizado coincide con
+ * la etiqueta. Asi no hace falta una lista de alias escrita a mano.
+ */
+const modelosPorCampoGhl = new Map<string, Modelo>();
+
+for (const modelo of catalogo.modelos) {
+  if (!modelo.campoGhl) continue;
+
+  const clave = normalizar(modelo.campoGhl);
+
+  if (!modelosPorSerie.has(clave)) modelosPorCampoGhl.set(clave, modelo);
+}
+
 /** Busca una serie por su nombre, tolerando espacios, guiones y mayusculas. */
 export function buscarSerie(texto: string): Modelo | undefined {
-  return modelosPorSerie.get(normalizar(texto));
+  const clave = normalizar(texto);
+
+  return modelosPorSerie.get(clave) ?? modelosPorCampoGhl.get(clave);
 }
 
 /**

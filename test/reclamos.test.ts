@@ -28,7 +28,8 @@ let respuestaSimulada: Awaited<ReturnType<typeof enviarSimulado>>;
 let llamadasAlUpstream = 0;
 
 async function enviarSimulado(): Promise<
-  { ok: true; datos: unknown } | { ok: false; reintentable: boolean; detalle: string }
+  | { ok: true; datos: unknown }
+  | { ok: false; reintentable: boolean; detalle: string; codigoZoho?: string }
 > {
   llamadasAlUpstream += 1;
 
@@ -135,19 +136,35 @@ describe('reenvio a la API externa', () => {
 
     assert.equal(respuesta.statusCode, 200);
     assert.equal(cuerpo.estado, 'recibido');
-    assert.equal(cuerpo.resumen.folio, 'F-123');
-    assert.equal(cuerpo.resumen.estado, 'ingresado');
-    assert.ok(!('rutTitular' in cuerpo.resumen), 'no debe filtrar campos ajenos a la lista blanca');
+    // Lo que resolvio mgAPI va aparte de lo que contesto Zoho.
+    assert.equal(cuerpo.mgapi.estado, 'procesado');
+    assert.equal(cuerpo.mgapi.interpretado.serie, 'MG4');
+    assert.equal(cuerpo.zoho.estado, 'aceptado');
+    assert.equal(cuerpo.zoho.detalle.folio, 'F-123');
+    assert.equal(cuerpo.zoho.detalle.estado, 'ingresado');
+    assert.ok(!('rutTitular' in cuerpo.zoho.detalle), 'no debe filtrar campos ajenos a la lista blanca');
     assert.ok(!respuesta.body.includes('secreto-de-la-api-externa'));
+    assert.ok(!('respuestaCruda' in cuerpo.zoho), 'la respuesta cruda solo sale en modo captura');
   });
 
   test('un error 500 de la API externa no aparece textual en la respuesta', async () => {
-    respuestaSimulada = { ok: false, reintentable: false, detalle: 'estado 500 detalle interno ajeno' };
+    respuestaSimulada = {
+      ok: false,
+      reintentable: false,
+      detalle: 'estado 500 detalle interno ajeno',
+      codigoZoho: 'INVALID_DATA',
+    };
 
     const respuesta = await pedir(reclamoValido);
+    const cuerpo = respuesta.json();
 
     assert.equal(respuesta.statusCode, 422);
-    assert.deepEqual(respuesta.json(), { error: 'reclamo_rechazado' });
+    assert.equal(cuerpo.error, 'reclamo_rechazado');
+    // GHL sabe que el problema fue de Zoho, no nuestro.
+    assert.equal(cuerpo.mgapi.estado, 'procesado');
+    assert.equal(cuerpo.zoho.estado, 'rechazado');
+    assert.equal(cuerpo.zoho.codigo, 'INVALID_DATA');
+    assert.ok(!respuesta.body.includes('detalle interno ajeno'));
   });
 });
 
