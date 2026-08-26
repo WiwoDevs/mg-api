@@ -223,6 +223,63 @@ También falta el concesionario **Italmotors** (Talca y Linares).
 que en realidad es una opción dentro de otro. Es la misma confusión entre modelo y variante que había en
 el payload anterior.
 
+## La llamada a la función de Zoho
+
+```
+POST https://www.zohoapis.com/crm/v7/functions/zohodeskcasewebsiteapi/actions/execute
+     ?auth_type=oauth&case=<el caso en JSON>
+
+Authorization: Zoho-oauthtoken <access token>
+Content-Type: application/json
+
+{ "id": "...", "name": "...", "email": "...", "phone": "..." }
+```
+
+**El caso viaja como argumento en la URL, no como cuerpo.** Es la causa probable del error
+`INVALID_DATA — "Value is empty and 'get' function cannot be applied"`: la función declara un argumento
+`case` y hace `.get()` sobre él, pero el argumento nunca llegaba, así que operaba sobre nada.
+
+En la configuración anterior el caso estaba en la sección de pares clave/valor del cuerpo, mientras el
+cuerpo crudo tenía otro JSON. GHL manda uno de los dos, y mandaba el crudo.
+
+**Zoho responde `HTTP 200` aunque la función falle**, con el error dentro del cuerpo. Sin revisarlo, un
+reclamo rechazado se daría por entregado. `INVALID_DATA`, `MANDATORY_NOT_FOUND` e `INVALID_URL_PATTERN`
+se tratan como definitivos; el resto se reintenta desde la cola.
+
+### Sobre la espera de 5 segundos
+
+El flujo anterior esperaba entre pedir el token y llamar a la función, porque GHL encadena pasos sin
+garantizar que la respuesta del anterior esté guardada. **Aquí esa espera no hace falta**: mgAPI espera
+de verdad la respuesta del token antes de seguir, así que no hay carrera que evitar.
+
+Queda como `ZOHO_ESPERA_MS`, en cero por defecto. Si en pruebas resulta que Zoho sí necesita un margen,
+se sube sin tocar código. Vale la pena dejarlo en cero: son 5 segundos que GHL pasa esperando en cada
+reclamo.
+
+## Las opciones reales del formulario
+
+El desplegable `nombre_convesionario` ofrece quince valores. Comparados con el catálogo de posventa,
+tres están mal:
+
+| Opción | Estado |
+|---|---|
+| `MOVICENTER` | **Es una sucursal de Pompeyo Carrasco, no un concesionario.** La API la resuelve con un alias para no rechazar el reclamo, pero hay que corregir el formulario |
+| `CIRCULO AUTOS` | Ya no atiende posventa. Un reclamo con este valor se rechaza a propósito, para que se derive a un concesionario activo |
+| *(falta)* `ITALMOTORS` | Atiende posventa en Talca y Linares, y no aparece entre las opciones |
+
+Las otras doce resuelven correctamente contra el catálogo.
+
+### `form.*` en vez de `contact.*`
+
+El webhook a Zoho leía `{{form.*}}`, no `{{contact.*}}`. La diferencia importa: **el formulario trae solo
+lo que la persona acaba de llenar, mientras que el contacto arrastra respuestas de reclamos anteriores.**
+
+Si `form.*` está disponible —lo está cuando el workflow lo dispara el envío del formulario— conviene
+usarlo en todo el cuerpo del webhook: el problema del histórico acumulado desaparece en el origen, y la
+selección por nombre pasa a ser una segunda red en vez de la única defensa.
+
+Falta confirmarlo antes de cambiar [`webhook-ghl.json`](webhook-ghl.json), que hoy usa `contact.*`.
+
 ## Lo que falta para escribir la limpieza
 
 1. **La lista exacta de opciones de `modelo_del_auto`.** Los valores literales del desplegable en GHL,

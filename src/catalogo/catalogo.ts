@@ -66,9 +66,23 @@ export function buscarSerie(texto: string): Modelo | undefined {
   return modelosPorSerie.get(normalizar(texto));
 }
 
+/**
+ * Opciones del formulario que no coinciden con el catalogo.
+ *
+ * El desplegable ofrece MOVICENTER como si fuera un concesionario, pero es una
+ * sucursal de Pompeyo Carrasco. Sin este alias, quien la elige recibe un
+ * rechazo y su reclamo no entra. Se retira cuando se corrija el formulario.
+ */
+const ALIAS_CONCESIONARIO: Record<string, string> = {
+  movicenter: 'Pompeyo Carrasco',
+};
+
 /** Busca un concesionario por su nombre, con la misma tolerancia. */
 export function buscarConcesionario(texto: string): Concesionario | undefined {
-  return concesionariosPorNombre.get(normalizar(texto));
+  const clave = normalizar(texto);
+  const alias = ALIAS_CONCESIONARIO[clave];
+
+  return concesionariosPorNombre.get(alias ? normalizar(alias) : clave);
 }
 
 /**
