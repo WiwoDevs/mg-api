@@ -14,10 +14,12 @@ process.env.COLA_ARCHIVO = join(carpetaTemporal, 'cola.sqlite');
 process.env.COLA_CLAVE_CIFRADO = Buffer.alloc(32, 3).toString('base64');
 process.env.COLA_INTERVALO_MS = '3600000';
 process.env.LIMITE_POR_MINUTO = '10000';
-// Sin Zoho: a proposito NO se definen UPSTREAM_URL ni UPSTREAM_TOKEN.
+// Sin Zoho: a proposito NO se define ninguna credencial de Zoho.
 process.env.UPSTREAM_ACTIVO = 'false';
 delete process.env.UPSTREAM_URL;
-delete process.env.UPSTREAM_TOKEN;
+delete process.env.ZOHO_CLIENT_ID;
+delete process.env.ZOHO_CLIENT_SECRET;
+delete process.env.ZOHO_REFRESH_TOKEN;
 
 const { construirServidor } = await import('../src/app.ts');
 const reclamoValido = JSON.parse(readFileSync('test/fixtures/webhook-ghl.json', 'utf8'));
