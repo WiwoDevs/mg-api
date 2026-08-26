@@ -77,6 +77,13 @@ const esquemaEntorno = z.object({
   // Abuso
   LIMITE_POR_MINUTO: z.coerce.number().int().positive().default(60),
 
+  // Diagnostico: agrega el cuerpo recibido al rechazo y al log. Enciendelo solo
+  // mientras depuras la integracion, porque escribe datos personales en el log.
+  DIAGNOSTICO_ENTRADA: booleano,
+  DIAGNOSTICO_ARCHIVO: z.string().default('./datos/diagnostico.sqlite'),
+  DIAGNOSTICO_MAXIMO: z.coerce.number().int().positive().max(500).default(50),
+  DIAGNOSTICO_RETENCION_HORAS: z.coerce.number().int().positive().default(24),
+
   // Modo captura: endpoint abierto y temporal para descubrir que manda GHL.
   // Se apaga solo tras CAPTURA_MAXIMA peticiones. Ver docs/05-modos-de-prueba.md
   MODO_CAPTURA: booleano,

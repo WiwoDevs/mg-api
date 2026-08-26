@@ -2,16 +2,18 @@ import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { verificarClave, verificarFirma } from '../security/autenticacion.ts';
 import { estaBloqueada, ipPermitida, limpiarFallos, registrarFallo } from '../security/perimetro.ts';
 import { resumenInterpretado } from '../schemas/reclamo.ts';
-import { procesarPayloadGhl } from '../schemas/ingesta-ghl.ts';
+import { formaDelCuerpo, procesarPayloadGhl } from '../schemas/ingesta-ghl.ts';
 import { interpretarRespuestaZoho, mapearAZoho } from '../upstream/zoho.ts';
 import { consumirPresupuesto } from '../upstream/cliente.ts';
 import { entorno } from '../env.ts';
 import type { ColaReintentos } from '../cola/cola.ts';
+import type { RegistroDiagnostico } from '../diagnostico/registro.ts';
 import type { Reclamo } from '../schemas/reclamo.ts';
 import type { ResultadoUpstream } from '../upstream/cliente.ts';
 
 export type DependenciasReclamos = {
   cola: ColaReintentos;
+  diagnostico?: RegistroDiagnostico;
   enviar: (reclamo: Reclamo, idCorrelacion: string) => Promise<ResultadoUpstream>;
 };
 
@@ -19,7 +21,7 @@ export type DependenciasReclamos = {
  * Ruta de ingreso de reclamos. Todo lo que entra aqui esta autenticado,
  * validado de forma estricta y nunca se registra en los logs.
  */
-export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPluginAsync {
+export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos): FastifyPluginAsync {
   return async function registrar(app: FastifyInstance): Promise<void> {
     // Primera barrera, antes de leer el cuerpo: a un desconocido no se le parsea nada.
     app.addHook('onRequest', async (peticion, respuesta) => {
@@ -54,10 +56,13 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
 
       // Se exige JSON aqui y no solo por el parser: los parsers de Fastify se
       // comparten entre plugins hermanos, y el modo captura registra uno abierto.
-      const tipo = peticion.headers['content-type'] ?? '';
+      // Solo aplica a lo que trae cuerpo: una lectura no declara tipo.
+      if (peticion.method !== 'GET') {
+        const tipo = peticion.headers['content-type'] ?? '';
 
-      if (!tipo.toLowerCase().startsWith('application/json')) {
-        return respuesta.code(415).send({ error: 'tipo_no_soportado' });
+        if (!tipo.toLowerCase().startsWith('application/json')) {
+          return respuesta.code(415).send({ error: 'tipo_no_soportado' });
+        }
       }
     });
 
@@ -76,14 +81,39 @@ export function rutaReclamos({ cola, enviar }: DependenciasReclamos): FastifyPlu
       }
     });
 
+    // Lectura de lo que se rechazo. Exige la misma clave que el ingreso.
+    app.get('/diagnostico', async (peticion, respuesta) => {
+      if (!diagnostico) {
+        return respuesta.code(404).send({ error: 'diagnostico_apagado' });
+      }
+
+      return respuesta.send({ total: diagnostico.total(), rechazos: diagnostico.leer() });
+    });
+
     app.post('/reclamos', async (peticion, respuesta) => {
       // Del cuerpo crudo de GHL al reclamo limpio: forma, seleccion por nombre,
       // formato de cada campo y existencia en el catalogo oficial de MG.
       const ingesta = procesarPayloadGhl(peticion.body);
 
       if (!ingesta.ok) {
+        // La forma no expone valores: dice si el cuerpo llego vacio, envuelto o
+        // con otros nombres, que es lo que hace falta para diagnosticar.
+        const forma = formaDelCuerpo(peticion.body);
+
+        peticion.log.warn(
+          { idCorrelacion: String(peticion.id), forma, campos: ingesta.errores },
+          'reclamo_rechazado_en_ingesta',
+        );
+
+        diagnostico?.registrar({
+          idCorrelacion: String(peticion.id),
+          forma,
+          campos: ingesta.errores,
+          cuerpoRecibido: peticion.cuerpoCrudo ?? '',
+        });
+
         // Se devuelven nombres de campo y motivo, nunca el valor recibido.
-        return respuesta.code(400).send({ error: 'entrada_invalida', campos: ingesta.errores });
+        return respuesta.code(400).send({ error: 'entrada_invalida', forma, campos: ingesta.errores });
       }
 
       const reclamo = ingesta.reclamo;

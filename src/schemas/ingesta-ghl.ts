@@ -294,3 +294,25 @@ export function procesarPayloadGhl(cuerpo: unknown): ResultadoIngesta {
 
   return resolverCatalogo(formato.data);
 }
+
+/**
+ * Describe la forma de lo que llego, sin exponer un solo valor.
+ *
+ * Con esto un rechazo se diagnostica mirando el log: las tres veces que fallo
+ * la integracion se habria visto de inmediato si el cuerpo llegaba vacio,
+ * envuelto o con otros nombres de campo.
+ *
+ * @param cuerpo cuerpo de la peticion, sin confiar en su forma
+ */
+export function formaDelCuerpo(cuerpo: unknown): string {
+  if (cuerpo === undefined) return 'ausente';
+  if (cuerpo === null) return 'null';
+  if (Array.isArray(cuerpo)) return `arreglo de ${cuerpo.length}`;
+  if (typeof cuerpo !== 'object') return typeof cuerpo;
+
+  const claves = Object.keys(cuerpo as object);
+
+  if (claves.length === 0) return 'objeto vacio';
+
+  return `objeto con claves: ${claves.join(', ')}`;
+}
