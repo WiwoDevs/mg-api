@@ -56,6 +56,11 @@ const esquemaEntorno = z.object({
   ZOHO_REFRESH_TOKEN: z.string().min(1).optional(),
   // Cuanto antes de que venza se renueva el token, para que ninguno caduque en vuelo.
   ZOHO_MARGEN_SEGUNDOS: z.coerce.number().int().positive().default(60),
+  // Nombre del argumento con el que la funcion de Zoho recibe el caso.
+  ZOHO_ARGUMENTO_CASO: z.string().min(1).default('case'),
+  // Espera antes de llamar a la funcion. El flujo anterior en GHL la necesitaba;
+  // aqui probablemente no, porque el token se espera de verdad. Ver docs/07.
+  ZOHO_ESPERA_MS: z.coerce.number().int().min(0).max(30_000).default(0),
   UPSTREAM_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
   UPSTREAM_PRESUPUESTO_DIARIO: z.coerce.number().int().positive().default(1000),
 

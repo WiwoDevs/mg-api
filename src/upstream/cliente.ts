@@ -1,6 +1,6 @@
 import { entorno } from '../env.ts';
 import type { Reclamo } from '../schemas/reclamo.ts';
-import { mapearAZoho } from './zoho.ts';
+import { datosDeContacto, mapearAZoho } from './zoho.ts';
 import { invalidarCredencial, obtenerCredencial } from './zoho-auth.ts';
 
 export type ResultadoUpstream =
@@ -47,12 +47,49 @@ export function reiniciarPresupuesto(): void {
 /** Marca interna para reconocer un token rechazado sin repetir el numero suelto. */
 const TOKEN_RECHAZADO = 'estado 401';
 
+/** Lo que viaja a Zoho: el caso como argumento y los datos de contacto como cuerpo. */
+type EnvioAZoho = { caso: string; cuerpo: string };
+
+/** Codigos de Zoho que no mejoran por reintentar: el dato esta mal, no el momento. */
+const CODIGOS_DEFINITIVOS = new Set(['INVALID_DATA', 'MANDATORY_NOT_FOUND', 'INVALID_URL_PATTERN']);
+
+/**
+ * Detecta un fallo que Zoho informa con codigo de exito.
+ *
+ * Su endpoint de funciones responde HTTP 200 aunque la funcion falle, con el
+ * detalle en el cuerpo. Sin esto, un reclamo rechazado se daria por entregado.
+ *
+ * @param datos cuerpo ya parseado de la respuesta
+ * @returns el fallo, o undefined si la respuesta es buena
+ */
+function errorLogicoDeZoho(datos: unknown): ResultadoUpstream | undefined {
+  if (typeof datos !== 'object' || datos === null) return undefined;
+
+  const codigo = (datos as { code?: unknown }).code;
+
+  if (typeof codigo !== 'string' || codigo === 'success') return undefined;
+
+  // El mensaje de Zoho no se reenvia: describe su logica interna.
+  return {
+    ok: false,
+    reintentable: !CODIGOS_DEFINITIVOS.has(codigo),
+    detalle: `Zoho respondio codigo "${codigo}"`,
+  };
+}
+
+/** Espera antes de llamar a la funcion, si la configuracion lo pide. */
+function esperar(ms: number): Promise<void> {
+  return new Promise((cumplir) => {
+    setTimeout(cumplir, ms);
+  });
+}
+
 /**
  * Una llamada a Zoho con un token fresco.
  * @param forzarToken pide un token nuevo en vez de usar el guardado
  */
 async function intentarEnvio(
-  cuerpo: string,
+  envio: EnvioAZoho,
   idCorrelacion: string,
   forzarToken: boolean,
 ): Promise<ResultadoUpstream> {
@@ -66,8 +103,15 @@ async function intentarEnvio(
     };
   }
 
+  // La funcion de Zoho recibe el caso como argumento, no como cuerpo. Mandarlo
+  // en el cuerpo es lo que dejaba el argumento vacio y hacia fallar su get().
+  const url = new URL(entorno.UPSTREAM_URL as string);
+
+  url.searchParams.set('auth_type', 'oauth');
+  url.searchParams.set(entorno.ZOHO_ARGUMENTO_CASO, envio.caso);
+
   try {
-    const respuesta = await fetch(entorno.UPSTREAM_URL as string, {
+    const respuesta = await fetch(url, {
       method: 'POST',
       redirect: 'error',
       signal: AbortSignal.timeout(entorno.UPSTREAM_TIMEOUT_MS),
@@ -78,11 +122,15 @@ async function intentarEnvio(
         authorization: `Zoho-oauthtoken ${credencial.credencial.token}`,
         'x-correlacion': idCorrelacion,
       },
-      body: cuerpo,
+      body: envio.cuerpo,
     });
 
     if (respuesta.ok) {
       const datos = await respuesta.json().catch(() => ({}));
+      const fallo = errorLogicoDeZoho(datos);
+
+      // Zoho responde 200 aunque la funcion falle: el error viene en el cuerpo.
+      if (fallo) return fallo;
 
       return { ok: true, datos };
     }
@@ -123,8 +171,14 @@ export async function enviarReclamo(
     return { ok: true, simulado: true, datos: {} };
   }
 
-  const cuerpo = JSON.stringify(mapearAZoho(reclamo));
-  const primerIntento = await intentarEnvio(cuerpo, idCorrelacion, false);
+  const envio: EnvioAZoho = {
+    caso: JSON.stringify(mapearAZoho(reclamo)),
+    cuerpo: JSON.stringify(datosDeContacto(reclamo)),
+  };
+
+  if (entorno.ZOHO_ESPERA_MS > 0) await esperar(entorno.ZOHO_ESPERA_MS);
+
+  const primerIntento = await intentarEnvio(envio, idCorrelacion, false);
 
   // Un 401 significa que el token guardado ya no sirve, aunque no haya vencido
   // segun nuestro reloj: se pide uno nuevo y se reintenta una sola vez.
@@ -132,5 +186,5 @@ export async function enviarReclamo(
 
   invalidarCredencial();
 
-  return intentarEnvio(cuerpo, idCorrelacion, true);
+  return intentarEnvio(envio, idCorrelacion, true);
 }

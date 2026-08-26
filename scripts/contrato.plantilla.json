@@ -2,7 +2,6 @@
   "proyecto": "mgAPI",
   "proposito": "API intermediaria de reclamos de posventa MG. Recibe un reclamo desde una automatizacion de GoHighLevel (GHL), lo valida y lo limpia, y lo reenvia a Zoho. No guarda datos personales: los recibe, los entrega y los olvida.",
   "aviso": "Archivo generado por scripts/generar-catalogo.py a partir de los Excel oficiales. No editarlo a mano.",
-
   "flujo": [
     "El usuario llena un formulario de reclamos.",
     "GHL recibe el ingreso y llama a mgAPI por webhook.",
@@ -10,7 +9,6 @@
     "mgAPI envia el reclamo a Zoho y devuelve a GHL un resumen filtrado.",
     "Si Zoho no responde, el reclamo queda en una cola cifrada y se reintenta hasta entregarlo."
   ],
-
   "endpoints": {
     "POST /v1/reclamos": {
       "descripcion": "Ingreso real de reclamos. Autenticado y validado.",
@@ -33,7 +31,6 @@
       "descripcion": "Estado del servicio y cantidad de reclamos en cola. Solo alcanzable desde dentro del servidor."
     }
   },
-
   "payloadDesdeGhl": {
     "explicacion": "GHL debe enviar un campo por cada variable, sin concatenar. Antes concatenaba muchas variables separadas por un caracter invisible, lo que producia valores pegados como 'MG3MG5' porque el contacto de GHL acumula respuestas de reclamos anteriores.",
     "advertenciaNombres": "Los nombres con errores de tipeo (patente_del_vehculo, ao_del_vehculo, descripcin_del_problema, imgenes_o_respaldo, crculo_autos, nombre_convesionario) son los slugs reales de GHL y NO deben corregirse. GHL elimina los caracteres acentuados en vez de transcribirlos: 'año' produce 'ao', 'Circulo' produce 'crculo'.",
@@ -100,7 +97,6 @@
       }
     }
   },
-
   "reglaDeSeleccion": {
     "problema": "El contacto de GHL acumula historico. Si la persona ya reporto un MG3 y hoy reporta un MG4, ambos campos siguen con valor. No sirve 'tomar el unico campo lleno' porque hay varios llenos.",
     "aclaracionClave": "modelo_del_auto es EL MODELO (MG4). Los trece campos del grupo variante_por_modelo son LA VARIANTE de su propio modelo: contact.mg4 guarda la variante del MG4. No son trece modelos alternativos.",
@@ -108,7 +104,6 @@
     "reglaSucursal": "Identica para la sucursal: sucursal_por_concesionario[slug(nombre_convesionario)]. Pendiente de confirmar con el equipo.",
     "slug": "Quitar los caracteres acentuados (no transcribirlos), pasar a minusculas, y convertir en '_' todo lo que no sea letra o numero."
   },
-
   "esquemaReclamoLimpio": {
     "descripcion": "Forma que mgAPI valida despues de limpiar. Es estricta: un campo no declarado hace que la peticion se rechace con 400.",
     "campos": {
@@ -130,7 +125,6 @@
       "ghlContactId": "opcional. Identificador del contacto en GHL, maximo 120 caracteres"
     }
   },
-
   "mapeoAZoho": {
     "descripcion": "Traduccion final. Los campos opcionales ausentes se omiten en vez de enviarse vacios.",
     "campos": {
@@ -152,7 +146,6 @@
       "cf_website_id": "ghlContactId (opcional)"
     }
   },
-
   "respuestas": {
     "200": "Entregado a Zoho. Devuelve estado 'recibido' y un resumen filtrado por lista blanca.",
     "202": "Zoho no estaba disponible. El reclamo quedo en la cola cifrada y se reintenta solo. Para GHL es un exito.",
@@ -164,13 +157,20 @@
     "429": "demasiadas_solicitudes o presupuesto_agotado.",
     "500": "error_interno. El detalle queda solo en los logs del servidor."
   },
-
   "pendientes": [
     "Confirmar que las sucursales siguen la misma regla de seleccion que los modelos.",
-    "Confirmar la lista exacta de opciones del desplegable modelo_del_auto en GHL, para mapear cada opcion a su serie del catalogo.",
-    "Confirmar la lista exacta de opciones del desplegable nombre_convesionario en GHL.",
+    "Corregir el formulario: MOVICENTER se ofrece como concesionario pero es una sucursal de Pompeyo Carrasco. Mientras tanto la API lo resuelve con un alias.",
+    "Retirar CIRCULO AUTOS del formulario: ya no atiende posventa, y un reclamo con ese valor se rechaza.",
+    "Agregar ITALMOTORS al formulario: atiende posventa en Talca y Linares, y no aparece entre las opciones.",
     "Confirmar que campos exige Zoho de verdad, para decidir que se rechaza y que viaja incompleto.",
-    "Definir que hacer si el modelo declarado no tiene variante cargada: rechazar o enviar sin variante.",
-    "Crear en GHL los campos de las series que faltan y retirar los que sobran (ver desajustesConGhl)."
-  ]
+    "Crear en GHL los campos de las series que faltan y retirar los que sobran (ver desajustesConGhl).",
+    "Confirmar si el webhook debe leer form.* en vez de contact.*: el formulario no arrastra historico y el contacto si."
+  ],
+  "llamadaAZoho": {
+    "endpoint": "POST {UPSTREAM_URL}?auth_type=oauth&case=<caso en JSON>",
+    "autenticacion": "Cabecera Authorization: Zoho-oauthtoken <access token>",
+    "caso": "El caso viaja como ARGUMENTO en la URL, no como cuerpo. Mandarlo en el cuerpo deja el argumento vacio y la funcion falla con \"Value is empty and get function cannot be applied\".",
+    "cuerpo": "Datos de contacto: id, name, email, phone. Subconjunto de lo que ya va en el caso.",
+    "erroresConCodigoDeExito": "El endpoint responde HTTP 200 aunque la funcion falle, con el detalle en el cuerpo. INVALID_DATA, MANDATORY_NOT_FOUND e INVALID_URL_PATTERN se tratan como definitivos; el resto se reintenta."
+  }
 }
