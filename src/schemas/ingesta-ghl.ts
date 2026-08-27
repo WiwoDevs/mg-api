@@ -136,7 +136,7 @@ function elegirDelGrupo(grupo: Record<string, string>, campo: string): string | 
 }
 
 type ResultadoIngesta =
-  | { ok: true; reclamo: Reclamo; avisos: string[] }
+  | { ok: true; reclamo: Reclamo; canonico: Record<string, string>; avisos: string[] }
   | { ok: false; errores: ErrorCampo[] };
 
 /**
@@ -264,8 +264,9 @@ export function transformarDesdeGhl(payload: PayloadGhl): { valor: unknown; erro
  * de cada campo, y existencia real en el catalogo oficial de MG.
  *
  * @param cuerpo cuerpo de la peticion, sin confiar en su forma
+ * @param canonizar envia los valores del catalogo en vez de los del formulario
  */
-export function procesarPayloadGhl(cuerpo: unknown): ResultadoIngesta {
+export function procesarPayloadGhl(cuerpo: unknown, canonizar = false): ResultadoIngesta {
   const payload = esquemaPayloadGhl.safeParse(desenvolver(cuerpo));
 
   if (!payload.success) {
@@ -294,9 +295,9 @@ export function procesarPayloadGhl(cuerpo: unknown): ResultadoIngesta {
     };
   }
 
-  const { reclamo, avisos } = resolverCatalogo(formato.data);
+  const { reclamo, canonico, avisos } = resolverCatalogo(formato.data, canonizar);
 
-  return { ok: true, reclamo, avisos };
+  return { ok: true, reclamo, canonico, avisos };
 }
 
 /**

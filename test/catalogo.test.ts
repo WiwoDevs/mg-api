@@ -22,7 +22,8 @@ function procesar(entrada: unknown) {
 
   assert.ok(forma.success, `formato invalido: ${forma.error?.issues.map((i) => i.path.join('.'))}`);
 
-  return resolverCatalogo(forma.data);
+  // Canoniza a proposito: estas pruebas cubren la resolucion contra el catalogo.
+  return resolverCatalogo(forma.data, true);
 }
 
 /** Igual que procesar(), pero para los casos donde se espera que el formato falle. */

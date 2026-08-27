@@ -65,6 +65,22 @@ const CODIGOS_DEFINITIVOS = new Set(['INVALID_DATA', 'MANDATORY_NOT_FOUND', 'INV
 function errorLogicoDeZoho(datos: unknown): ResultadoUpstream | undefined {
   if (typeof datos !== 'object' || datos === null) return undefined;
 
+  // La funcion puede fallar aunque la plataforma responda "success": Zoho
+  // informa que la ejecuto bien, y el error de la funcion viene adentro de su
+  // salida. Sin mirar ahi, un caso que nunca se creo se daba por entregado.
+  const fallaInterna = errorDeLaFuncion(datos);
+
+  if (fallaInterna) {
+    return {
+      ok: false,
+      // El dato esta mal, no el momento: reintentar da el mismo error.
+      reintentable: false,
+      detalle: `la funcion de Zoho fallo: ${fallaInterna}`,
+      codigoZoho: 'FUNCION_FALLO',
+      datosZoho: datos,
+    };
+  }
+
   const codigo = (datos as { code?: unknown }).code;
 
   if (typeof codigo !== 'string' || codigo === 'success') return undefined;
@@ -79,6 +95,41 @@ function errorLogicoDeZoho(datos: unknown): ResultadoUpstream | undefined {
     // Se conserva para poder devolverselo a GHL: es lo que explica el rechazo.
     datosZoho: datos,
   };
+}
+
+/**
+ * Lee el resultado que devolvio la funcion, dentro de details.output.
+ *
+ * Zoho responde code "success" cuando la funcion se ejecuto, aunque la funcion
+ * misma haya terminado en error. El detalle real esta en su salida.
+ *
+ * @param datos cuerpo ya parseado de la respuesta de Zoho
+ * @returns el mensaje de error de la funcion, o undefined si le fue bien
+ */
+function errorDeLaFuncion(datos: unknown): string | undefined {
+  const salida = (datos as { details?: { output?: unknown } }).details?.output;
+
+  if (typeof salida !== 'string') return undefined;
+
+  let resultado: { errorMsg?: unknown; status?: unknown };
+
+  try {
+    resultado = JSON.parse(salida);
+  } catch {
+    // Salida en texto plano: no hay estructura de error que leer.
+    return undefined;
+  }
+
+  if (typeof resultado.errorMsg === 'string' && resultado.errorMsg.trim() !== '') {
+    return resultado.errorMsg;
+  }
+
+  // Algunas funciones solo marcan el estado, sin mensaje.
+  if (resultado.status !== undefined && String(resultado.status) !== '0') {
+    return `la funcion devolvio status ${String(resultado.status)}`;
+  }
+
+  return undefined;
 }
 
 /** Espera antes de llamar a la funcion, si la configuracion lo pide. */

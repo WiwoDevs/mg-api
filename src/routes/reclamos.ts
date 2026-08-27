@@ -93,7 +93,7 @@ export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos
     app.post('/reclamos', async (peticion, respuesta) => {
       // Del cuerpo crudo de GHL al reclamo limpio: forma, seleccion por nombre,
       // formato de cada campo y existencia en el catalogo oficial de MG.
-      const ingesta = procesarPayloadGhl(peticion.body);
+      const ingesta = procesarPayloadGhl(peticion.body, entorno.ZOHO_VALORES_CANONICOS);
 
       if (!ingesta.ok) {
         // La forma no expone valores: dice si el cuerpo llego vacio, envuelto o
@@ -126,7 +126,10 @@ export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos
       const avisos = [...ingesta.avisos, ...advertencias(reclamo)];
       const mgapi = {
         estado: 'procesado',
+        // Lo que viaja a Zoho, no el valor del catalogo: es lo que hay que mirar
+        // cuando la funcion de Zoho se queja de un dato.
         interpretado: resumenInterpretado(reclamo),
+        ...(entorno.ZOHO_VALORES_CANONICOS ? {} : { segunCatalogo: ingesta.canonico }),
         ...(avisos.length > 0 ? { advertencias: avisos } : {}),
       };
 
