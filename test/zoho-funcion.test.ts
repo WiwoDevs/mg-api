@@ -70,21 +70,24 @@ afterEach(() => {
 });
 
 describe('llamada a la funcion de Zoho', () => {
-  test('el caso viaja como argumento, no como cuerpo', async () => {
+  test('el caso viaja en el cuerpo, anidado bajo "case"', async () => {
     await enviarReclamo(reclamo, 'correlacion-1');
 
-    const url = new URL(urlLlamada);
-    const caso = url.searchParams.get('case');
+    // Es la forma que pide la especificacion de Zoho. Mandarlo como parametro
+    // de la URL dejaba ese objeto vacio y la funcion fallaba al leerlo.
+    const cuerpo = JSON.parse(cuerpoLlamada);
 
-    assert.ok(caso, 'el argumento case tiene que ir en la URL');
+    assert.ok(cuerpo.case, 'el caso tiene que ir bajo la clave case del cuerpo');
+    assert.equal(typeof cuerpo.case, 'object', 'objeto anidado, no texto JSON');
+    assert.equal(cuerpo.case.cf_series, 'MG4');
+    assert.equal(cuerpo.case.cf_model, 'MG 4 XPOWER');
+    assert.equal(cuerpo.case.cf_id_number, '123456785');
+  });
 
-    // Es lo que fallaba antes: el argumento llegaba vacio y la funcion hacia
-    // get() sobre nada.
-    const contenido = JSON.parse(caso);
+  test('el caso ya no viaja en la URL', async () => {
+    await enviarReclamo(reclamo, 'correlacion-1b');
 
-    assert.equal(contenido.cf_series, 'MG4');
-    assert.equal(contenido.cf_model, 'MG 4 XPOWER');
-    assert.equal(contenido.cf_id_number, '123456785');
+    assert.equal(new URL(urlLlamada).searchParams.get('case'), null);
   });
 
   test('manda auth_type=oauth', async () => {
@@ -93,15 +96,11 @@ describe('llamada a la funcion de Zoho', () => {
     assert.equal(new URL(urlLlamada).searchParams.get('auth_type'), 'oauth');
   });
 
-  test('el cuerpo lleva los datos de contacto', async () => {
+  test('el cuerpo lleva solo el caso, sin datos sueltos al lado', async () => {
     await enviarReclamo(reclamo, 'correlacion-3');
 
-    assert.deepEqual(JSON.parse(cuerpoLlamada), {
-      id: 'ghl-abc123',
-      name: 'Juan Perez Soto',
-      email: 'juan.perez@ejemplo.cl',
-      phone: '+56912345678',
-    });
+    // La especificacion solo declara "case": no se manda nada mas.
+    assert.deepEqual(Object.keys(JSON.parse(cuerpoLlamada)), ['case']);
   });
 });
 

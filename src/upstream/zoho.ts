@@ -48,29 +48,6 @@ export function interpretarRespuestaZoho(datos: unknown): RespuestaZoho {
   return { codigo, detalle: mapearRespuesta(contenido ?? datos) };
 }
 
-/** Cuerpo de la peticion: datos de contacto, aparte del caso. */
-export type ContactoZoho = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-};
-
-/**
- * Datos de contacto que acompanan a la funcion en el cuerpo de la peticion.
- * Es un subconjunto de lo que ya viaja en el caso: no expone nada nuevo.
- *
- * @param reclamo reclamo ya validado y resuelto contra el catalogo
- */
-export function datosDeContacto(reclamo: Reclamo): ContactoZoho {
-  return {
-    id: reclamo.ghlContactId ?? '',
-    name: `${reclamo.nombre} ${reclamo.apellido}`,
-    email: reclamo.email,
-    phone: reclamo.telefono,
-  };
-}
-
 export type ReclamoZoho = {
   cf_first_name: string;
   cf_last_name: string;

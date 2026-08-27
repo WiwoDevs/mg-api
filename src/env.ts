@@ -63,7 +63,7 @@ const esquemaEntorno = z.object({
   // Por defecto los del formulario, que es para lo que se escribio la funcion
   // de Zoho. El valor del catalogo se sigue mostrando en mgapi.interpretado.
   ZOHO_VALORES_CANONICOS: booleano,
-  // Nombre del argumento con el que la funcion de Zoho recibe el caso.
+  // Clave del cuerpo bajo la que Zoho espera el caso, segun su especificacion.
   ZOHO_ARGUMENTO_CASO: z.string().min(1).default('case'),
   // Espera antes de llamar a la funcion. El flujo anterior en GHL la necesitaba;
   // aqui probablemente no, porque el token se espera de verdad. Ver docs/07.

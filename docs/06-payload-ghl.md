@@ -230,26 +230,62 @@ el payload anterior.
 
 ## La llamada a la función de Zoho
 
+Según la especificación oficial del cliente
+([`Zoho_MG Website Case Integration_V1`](Zoho_MG%20Website%20Case%20Integration_V1(20260612).xlsx)):
+
 ```
-POST https://www.zohoapis.com/crm/v7/functions/zohodeskcasewebsiteapi/actions/execute
-     ?auth_type=oauth&case=<el caso en JSON>
+POST https://www.zohoapis.com/crm/v7/functions/zohodeskcasewebsiteapi/actions/execute?auth_type=oauth
 
 Authorization: Zoho-oauthtoken <access token>
 Content-Type: application/json
 
-{ "id": "...", "name": "...", "email": "...", "phone": "..." }
+{ "case": { "cf_last_name": "...", "cf_series": "MG ZS", "cf_model": "1.5L AT STD", ... } }
 ```
 
-**El caso viaja como argumento en la URL, no como cuerpo.** Es la causa probable del error
-`INVALID_DATA — "Value is empty and 'get' function cannot be applied"`: la función declara un argumento
-`case` y hace `.get()` sobre él, pero el argumento nunca llegaba, así que operaba sobre nada.
+**El caso va dentro del cuerpo, anidado bajo `case`, como objeto.** No como parámetro de la URL, y no
+como texto JSON. Esa fue la causa del error
+`INVALID_DATA — "Value is empty and 'get' function cannot be applied"`: la función leía `case` del
+cuerpo, ahí no había nada, y su primer `.get()` fallaba.
 
-En la configuración anterior el caso estaba en la sección de pares clave/valor del cuerpo, mientras el
-cuerpo crudo tenía otro JSON. GHL manda uno de los dos, y mandaba el crudo.
+Se probaron antes dos formas equivocadas: el caso en la sección clave/valor de GHL (nunca salía) y el
+caso como parámetro de la URL (llegaba, pero al lugar que la función no lee).
 
-**Zoho responde `HTTP 200` aunque la función falle**, con el error dentro del cuerpo. Sin revisarlo, un
-reclamo rechazado se daría por entregado. `INVALID_DATA`, `MANDATORY_NOT_FOUND` e `INVALID_URL_PATTERN`
-se tratan como definitivos; el resto se reintenta desde la cola.
+### Los campos y su formato
+
+La especificación declara **15 campos**. Vale la pena mirar su ejemplo, porque fija el formato:
+
+```json
+"cf_series": "MG ZS",
+"cf_model": "1.5L AT STD"
+```
+
+La variante va **sin el nombre del modelo adelante**. Es como los manda el formulario, así que no hay
+que anteponerle la serie.
+
+mgAPI envía los 15, más `cf_first_name`, que la especificación no lista pero sí estaba en el payload
+anterior de GHL. Si algún día la función se queja de un campo desconocido, ese es el primero a revisar.
+
+### Un campo vacío es un error documentado
+
+El ejemplo de fallo de la especificación es precisamente `cf_last_name: ""`, y responde:
+
+```json
+{ "code": "INTERNAL_ERROR", "message": "Problem occurred internally", "status": "error" }
+```
+
+Distinto del error de la función, que llega con `code: "success"` y el detalle adentro de
+`details.output`. mgAPI reconoce los dos como rechazo.
+
+### Zoho responde éxito aunque la función falle
+
+`code: "success"` solo dice que la función se ejecutó. Si terminó mal, el detalle está en su salida:
+
+```json
+"details": { "output": "{\"status\":\"1\",\"errorMsg\":\"...\",\"case id\":\"\"}" }
+```
+
+Un `status` distinto de `0`, o un `errorMsg` con contenido, se tratan como rechazo. Sin mirar ahí, un
+caso que nunca se creó se daba por entregado.
 
 ### Sobre la espera de 5 segundos
 
