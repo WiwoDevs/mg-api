@@ -66,6 +66,16 @@ after(async () => {
 });
 
 describe('lectura de la respuesta de Zoho', () => {
+  test('el numero de caso de Zoho llega a GHL', () => {
+    // Es el dato que GHL necesita para seguir el reclamo.
+    const leida = interpretarRespuestaZoho({
+      code: 'success',
+      details: { output: '{"status":"0","errorMsg":"","case id":"1169262000007109716"}' },
+    });
+
+    assert.equal(leida.detalle['case id'], '1169262000007109716');
+  });
+
   test('saca el resultado de details.output cuando viene como texto JSON', () => {
     const leida = interpretarRespuestaZoho({
       code: 'success',

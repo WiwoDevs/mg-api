@@ -231,7 +231,14 @@ export function resumenInterpretado(reclamo: Reclamo): Record<string, string> {
  * Unicos campos de la API externa que pueden llegar a GHL.
  * Lo que no esta aqui no sale: la regla es denegar por defecto.
  */
-export const CAMPOS_RESPUESTA_PERMITIDOS = ['folio', 'estado', 'fechaRecepcion'] as const;
+// "case id", con espacio, es el nombre real que devuelve la funcion de Zoho.
+export const CAMPOS_RESPUESTA_PERMITIDOS = [
+  'case id',
+  'status',
+  'folio',
+  'estado',
+  'fechaRecepcion',
+] as const;
 
 /**
  * Filtra la respuesta de la API externa dejando solo campos permitidos y escalares.
