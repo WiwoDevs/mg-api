@@ -13,19 +13,23 @@ import { mapearAZoho } from '../src/upstream/zoho.ts';
 
 const reclamoValido = JSON.parse(readFileSync('test/fixtures/reclamo-valido.json', 'utf8'));
 
-/** Valida y resuelve un reclamo en un paso, como hace la ruta. */
+/**
+ * Valida y resuelve un reclamo en un paso, como hace la ruta.
+ * Falla la prueba si el formato es invalido, para que el error se lea claro.
+ */
 function procesar(entrada: unknown) {
   const forma = esquemaReclamo.safeParse(entrada);
 
-  if (!forma.success) {
-    return { ok: false as const, errores: forma.error.issues.map((i) => i.path.join('.')) };
-  }
+  assert.ok(forma.success, `formato invalido: ${forma.error?.issues.map((i) => i.path.join('.'))}`);
 
-  const resuelto = resolverCatalogo(forma.data);
+  return resolverCatalogo(forma.data);
+}
 
-  return resuelto.ok
-    ? { ok: true as const, reclamo: resuelto.reclamo }
-    : { ok: false as const, errores: resuelto.errores.map((e) => e.campo) };
+/** Igual que procesar(), pero para los casos donde se espera que el formato falle. */
+function erroresDeFormato(entrada: unknown): string[] {
+  const forma = esquemaReclamo.safeParse(entrada);
+
+  return forma.success ? [] : forma.error.issues.map((issue) => issue.path.join('.'));
 }
 
 describe('catalogo', () => {
@@ -102,37 +106,49 @@ describe('validacion contra el catalogo', () => {
   test('el reclamo de ejemplo pasa y queda con los valores canonicos', () => {
     const resultado = procesar(reclamoValido);
 
-    assert.ok(resultado.ok, `errores: ${'errores' in resultado ? resultado.errores : ''}`);
     assert.equal(resultado.reclamo.vehiculo.serie, 'MG4');
     assert.equal(resultado.reclamo.vehiculo.variante, 'MG 4 XPOWER');
     assert.equal(resultado.reclamo.concesionario.nombre, 'Bruno Fritsch');
   });
 
-  test('una serie que no existe se rechaza', () => {
+  test('una serie fuera del catalogo pasa tal cual, con aviso', () => {
+    // El formulario manda: si ofrece la opcion, es legitima y el catalogo es
+    // el que esta viejo. Perder el reclamo por esa diferencia es peor.
     const resultado = procesar({ ...reclamoValido, vehiculo: { ...reclamoValido.vehiculo, serie: 'MG 99' } });
 
-    assert.equal(resultado.ok, false);
-    assert.deepEqual(resultado.errores, ['vehiculo.serie']);
+    assert.equal(resultado.reclamo.vehiculo.serie, 'MG 99', 'viaja sin canonizar');
+    assert.ok(resultado.avisos.some((a) => a.includes('MG 99')));
   });
 
-  test('una variante de otra serie se rechaza', () => {
+  test('una variante de otra serie pasa tal cual, con aviso', () => {
     const resultado = procesar({
       ...reclamoValido,
       vehiculo: { ...reclamoValido.vehiculo, serie: 'MG3', variante: 'MG 4 XPOWER' },
     });
 
-    assert.equal(resultado.ok, false);
-    assert.deepEqual(resultado.errores, ['vehiculo.variante']);
+    assert.equal(resultado.reclamo.vehiculo.variante, 'MG 4 XPOWER');
+    assert.ok(resultado.avisos.some((a) => a.includes('MG3')));
   });
 
-  test('una sucursal que no pertenece al concesionario se rechaza', () => {
+  test('una sucursal de otro concesionario pasa tal cual, con aviso', () => {
     const resultado = procesar({
       ...reclamoValido,
       concesionario: { nombre: 'Bruno Fritsch', sucursal: 'PUNTA ARENAS' },
     });
 
-    assert.equal(resultado.ok, false);
-    assert.deepEqual(resultado.errores, ['concesionario.sucursal']);
+    assert.equal(resultado.reclamo.concesionario.sucursal, 'PUNTA ARENAS');
+    assert.ok(resultado.avisos.some((a) => a.includes('PUNTA ARENAS')));
+  });
+
+  test('lo que si esta en el catalogo se sigue canonizando', () => {
+    const resultado = procesar({
+      ...reclamoValido,
+      concesionario: { nombre: 'BRUNO FRITSCH', sucursal: 'La Florida - Vicuña Mackenna 9085' },
+    });
+
+    assert.equal(resultado.reclamo.concesionario.nombre, 'Bruno Fritsch');
+    assert.equal(resultado.reclamo.concesionario.sucursal, 'LA FLORIDA');
+    assert.deepEqual(resultado.avisos, [], 'sin avisos cuando todo calza');
   });
 
   test('un VIN con letras prohibidas entra igual, con aviso', () => {
@@ -141,8 +157,11 @@ describe('validacion contra el catalogo', () => {
       vehiculo: { ...reclamoValido.vehiculo, vin: 'LSJA24U97PN12345O' },
     });
 
-    assert.ok(resultado.ok);
     assert.ok(advertencias(resultado.reclamo).some((a) => a.includes('VIN')));
+  });
+
+  test('un campo obligatorio vacio si detiene el reclamo', () => {
+    assert.deepEqual(erroresDeFormato({ ...reclamoValido, motivo: '' }), ['motivo']);
   });
 });
 
@@ -154,11 +173,7 @@ describe('traduccion a Zoho', () => {
     delete sinOpcionales.vehiculo.kilometraje;
     delete sinOpcionales.ghlContactId;
 
-    const resultado = procesar(sinOpcionales);
-
-    assert.ok(resultado.ok);
-
-    const zoho = mapearAZoho(resultado.reclamo);
+    const zoho = mapearAZoho(procesar(sinOpcionales).reclamo);
 
     assert.ok(!('cf_vin' in zoho));
     assert.ok(!('cf_mileage' in zoho));

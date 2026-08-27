@@ -111,32 +111,31 @@ export type Reclamo = z.infer<typeof esquemaReclamo>;
 
 export type ErrorCampo = { campo: string; mensaje: string };
 
-export type ResultadoCatalogo =
-  | { ok: true; reclamo: Reclamo }
-  | { ok: false; errores: ErrorCampo[] };
+export type ResultadoCatalogo = { reclamo: Reclamo; avisos: string[] };
 
 /**
- * Comprueba serie, variante, concesionario y sucursal contra el catalogo
- * oficial, y reemplaza lo recibido por el valor canonico.
+ * Reemplaza serie, variante, concesionario y sucursal por su valor canonico
+ * del catalogo, cuando existe.
  *
- * Que el valor exista en el catalogo es lo que impide que a Zoho llegue un
- * modelo inventado o mal escrito.
+ * Lo que no esta en el catalogo NO se rechaza: viaja tal como lo mando el
+ * formulario y queda una advertencia. El formulario es la fuente: si ofrece una
+ * opcion, es legitima, y el catalogo es el que esta desactualizado. Perder el
+ * reclamo por esa diferencia es peor que aceptar un valor sin canonizar.
  *
  * @param reclamo reclamo que ya paso el esquema de formato
  */
 export function resolverCatalogo(reclamo: Reclamo): ResultadoCatalogo {
-  const errores: ErrorCampo[] = [];
+  const avisos: string[] = [];
 
   const modelo = buscarSerie(reclamo.vehiculo.serie);
   const variante = modelo ? buscarVariante(modelo, reclamo.vehiculo.variante) : undefined;
 
   if (!modelo) {
-    errores.push({ campo: 'vehiculo.serie', mensaje: 'serie desconocida en el catalogo MG' });
+    avisos.push(`el modelo "${reclamo.vehiculo.serie}" no esta en el catalogo MG`);
   } else if (!variante) {
-    errores.push({
-      campo: 'vehiculo.variante',
-      mensaje: `variante desconocida o ambigua para la serie ${modelo.serie}`,
-    });
+    avisos.push(
+      `la variante "${reclamo.vehiculo.variante}" no calza con las de ${modelo.serie}`,
+    );
   }
 
   const concesionario = buscarConcesionario(reclamo.concesionario.nombre);
@@ -145,25 +144,26 @@ export function resolverCatalogo(reclamo: Reclamo): ResultadoCatalogo {
     : undefined;
 
   if (!concesionario) {
-    errores.push({
-      campo: 'concesionario.nombre',
-      mensaje: 'concesionario no activo en posventa',
-    });
+    avisos.push(`"${reclamo.concesionario.nombre}" no figura entre los concesionarios de posventa`);
   } else if (!sucursal) {
-    errores.push({
-      campo: 'concesionario.sucursal',
-      mensaje: `sucursal desconocida o ambigua para ${concesionario.nombre}`,
-    });
+    avisos.push(
+      `la sucursal "${reclamo.concesionario.sucursal}" no calza con las de ${concesionario.nombre}`,
+    );
   }
 
-  if (errores.length > 0) return { ok: false, errores };
-
   return {
-    ok: true,
+    avisos,
     reclamo: {
       ...reclamo,
-      vehiculo: { ...reclamo.vehiculo, serie: modelo!.serie, variante: variante! },
-      concesionario: { nombre: concesionario!.nombre, sucursal: sucursal! },
+      vehiculo: {
+        ...reclamo.vehiculo,
+        serie: modelo?.serie ?? reclamo.vehiculo.serie,
+        variante: variante ?? reclamo.vehiculo.variante,
+      },
+      concesionario: {
+        nombre: concesionario?.nombre ?? reclamo.concesionario.nombre,
+        sucursal: sucursal ?? reclamo.concesionario.sucursal,
+      },
     },
   };
 }

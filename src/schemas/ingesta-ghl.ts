@@ -135,7 +135,9 @@ function elegirDelGrupo(grupo: Record<string, string>, campo: string): string | 
   return undefined;
 }
 
-type ResultadoIngesta = { ok: true; reclamo: Reclamo } | { ok: false; errores: ErrorCampo[] };
+type ResultadoIngesta =
+  | { ok: true; reclamo: Reclamo; avisos: string[] }
+  | { ok: false; errores: ErrorCampo[] };
 
 /**
  * Saca el reclamo de la envoltura {"body": "<json>"}.
@@ -292,7 +294,9 @@ export function procesarPayloadGhl(cuerpo: unknown): ResultadoIngesta {
     };
   }
 
-  return resolverCatalogo(formato.data);
+  const { reclamo, avisos } = resolverCatalogo(formato.data);
+
+  return { ok: true, reclamo, avisos };
 }
 
 /**
