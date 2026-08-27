@@ -8,7 +8,7 @@ import {
   buscarVariante,
   catalogo,
 } from '../src/catalogo/catalogo.ts';
-import { esquemaReclamo, resolverCatalogo } from '../src/schemas/reclamo.ts';
+import { advertencias, esquemaReclamo, resolverCatalogo } from '../src/schemas/reclamo.ts';
 import { mapearAZoho } from '../src/upstream/zoho.ts';
 
 const reclamoValido = JSON.parse(readFileSync('test/fixtures/reclamo-valido.json', 'utf8'));
@@ -135,14 +135,14 @@ describe('validacion contra el catalogo', () => {
     assert.deepEqual(resultado.errores, ['concesionario.sucursal']);
   });
 
-  test('un VIN con letras prohibidas se rechaza', () => {
+  test('un VIN con letras prohibidas entra igual, con aviso', () => {
     const resultado = procesar({
       ...reclamoValido,
       vehiculo: { ...reclamoValido.vehiculo, vin: 'LSJA24U97PN12345O' },
     });
 
-    assert.equal(resultado.ok, false);
-    assert.deepEqual(resultado.errores, ['vehiculo.vin']);
+    assert.ok(resultado.ok);
+    assert.ok(advertencias(resultado.reclamo).some((a) => a.includes('VIN')));
   });
 });
 

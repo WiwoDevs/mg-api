@@ -61,7 +61,9 @@ export const esquemaReclamo = z
   .object({
     nombre: z.string().trim().min(2).max(60),
     apellido: z.string().trim().min(2).max(60),
-    rut: z.string().trim().transform(normalizarRut).refine(rutValido, 'RUT invalido'),
+    // El RUT se normaliza pero no se rechaza por digito verificador: un error de
+    // tipeo no debe costar el reclamo. Queda como advertencia.
+    rut: z.string().trim().min(1, 'falta el RUT').transform(normalizarRut),
     email: z
       .string()
       .trim()
@@ -74,21 +76,18 @@ export const esquemaReclamo = z
       .refine((valor) => TELEFONO.test(valor), 'telefono invalido'),
     vehiculo: z
       .object({
+        // Se normaliza sin exigir formato chileno: hay patentes antiguas, de
+        // remolque y extranjeras que no calzan, y perder el reclamo es peor.
         patente: z
           .string()
           .trim()
+          .min(1, 'falta la patente')
           .toUpperCase()
-          .transform((valor) => valor.replace(/[\s-]/g, ''))
-          .refine((valor) => PATENTE_CHILENA.test(valor), 'patente invalida'),
+          .transform((valor) => valor.replace(/[\s-]/g, '')),
         serie: z.string().trim().min(2).max(60),
         variante: z.string().trim().min(1).max(80),
         anio: z.coerce.number().int().min(1900).max(anioActual + 1),
-        vin: z
-          .string()
-          .trim()
-          .toUpperCase()
-          .refine((valor) => VIN.test(valor), 'VIN invalido: son 17 caracteres, sin I, O ni Q')
-          .optional(),
+        vin: z.string().trim().toUpperCase().optional(),
         kilometraje: enteroTolerante.optional(),
       })
       .strict(),
@@ -98,7 +97,7 @@ export const esquemaReclamo = z
         sucursal: z.string().trim().min(2).max(80),
       })
       .strict(),
-    motivo: z.string().trim().min(10).max(2000),
+    motivo: z.string().trim().min(1, 'falta la descripcion del problema').max(2000),
     adjuntoUrl: z
       .string()
       .trim()
@@ -167,6 +166,34 @@ export function resolverCatalogo(reclamo: Reclamo): ResultadoCatalogo {
       concesionario: { nombre: concesionario!.nombre, sucursal: sucursal! },
     },
   };
+}
+
+/**
+ * Revisa lo que se acepto pero conviene mirar.
+ *
+ * Son controles que antes rechazaban el reclamo. Rechazar significaba perderlo,
+ * asi que ahora solo avisan: el reclamo sigue a Zoho y el aviso viaja en la
+ * respuesta, para que quien corresponda pueda corregir el dato despues.
+ *
+ * @param reclamo reclamo ya validado y resuelto contra el catalogo
+ */
+export function advertencias(reclamo: Reclamo): string[] {
+  const avisos: string[] = [];
+
+  if (!rutValido(reclamo.rut)) {
+    avisos.push('el RUT no pasa la verificacion por modulo 11');
+  }
+  if (!PATENTE_CHILENA.test(reclamo.vehiculo.patente)) {
+    avisos.push('la patente no calza con los formatos chilenos habituales');
+  }
+  if (reclamo.motivo.length < 10) {
+    avisos.push('la descripcion del problema es muy breve');
+  }
+  if (reclamo.vehiculo.vin !== undefined && !VIN.test(reclamo.vehiculo.vin)) {
+    avisos.push('el VIN no tiene 17 caracteres validos');
+  }
+
+  return avisos;
 }
 
 /**

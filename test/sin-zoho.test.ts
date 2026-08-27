@@ -90,14 +90,14 @@ describe('modo sin Zoho', () => {
     assert.equal(enviado.cf_website_dealer_pos, 'LA FLORIDA');
   });
 
-  test('la validacion sigue rechazando lo invalido', async () => {
+  test('la validacion sigue rechazando lo que falta', async () => {
     const respuesta = await app.inject({
       method: 'POST',
       url: '/v1/reclamos',
       headers: { 'content-type': 'application/json', 'x-mgapi-key': CLAVE },
       payload: JSON.stringify({
         ...reclamoValido,
-        contacto: { ...reclamoValido.contacto, rut: '12.345.678-9' },
+        vehiculo: { ...reclamoValido.vehiculo, modelo_del_auto: '' },
       }),
     });
 
