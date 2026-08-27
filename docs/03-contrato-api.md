@@ -29,18 +29,18 @@ declarados, valida cada campo, resuelve todo contra el catálogo oficial de MG y
 |---|---|
 | `contacto.first_name` | 2 a 60 caracteres |
 | `contacto.last_name` | 2 a 60 caracteres |
-| `contacto.rut` | RUT chileno válido por módulo 11. Se aceptan puntos y guion; se normalizan |
+| `contacto.rut` | Obligatorio. Se normalizan puntos y guion. Un dígito verificador malo **avisa, no bloquea** |
 | `contacto.email` | Formato de correo, máximo 200 caracteres. Se pasa a minúsculas |
 | `contacto.phone` | 8 a 20 dígitos, opcionalmente con `+`, espacios o guiones |
-| `vehiculo.patente_del_vehculo` | Formatos chilenos: `AABB12`, `AA1234` o `AAA12`. Se pasa a mayúsculas |
-| `vehiculo.modelo_del_auto` | Debe existir en el catálogo. Decide qué campo de variante se lee |
+| `vehiculo.patente_del_vehculo` | Obligatoria. Se pasa a mayúsculas. Un formato no chileno **avisa, no bloquea** |
+| `vehiculo.modelo_del_auto` | Decide qué campo de variante se lee. Si no está en el catálogo, viaja tal cual con advertencia |
 | `vehiculo.ao_del_vehculo` | Entre 1900 y el año próximo |
-| `vehiculo.vin_del_vehculo` | Opcional. 17 caracteres, sin I, O ni Q |
+| `vehiculo.vin_del_vehculo` | Opcional. Un VIN mal formado **avisa, no bloquea** |
 | `vehiculo.kilometraje` | Opcional. Entero; acepta separadores de miles y los quita |
 | `variante_por_modelo` | Grupo abierto. Se lee **solo** el campo del modelo declarado |
-| `concesionario.nombre_convesionario` | Debe existir entre los concesionarios activos en posventa |
+| `concesionario.nombre_convesionario` | Obligatorio. Si no está entre los activos en posventa, viaja tal cual con advertencia |
 | `sucursal_por_concesionario` | Grupo abierto. Se lee **solo** el campo del concesionario declarado |
-| `reclamo.descripcin_del_problema` | 10 a 2000 caracteres |
+| `reclamo.descripcin_del_problema` | Obligatoria, hasta 2000 caracteres. Muy breve **avisa, no bloquea** |
 | `reclamo.imgenes_o_respaldo` | Opcional. URL absoluta |
 | `ghl_contact_id` | Opcional, hasta 120 caracteres |
 

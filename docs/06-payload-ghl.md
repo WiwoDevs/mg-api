@@ -190,8 +190,13 @@ dos listas no coinciden — Lead form tiene 13 concesionarios y otros puntos de 
 La planilla trae dos anotaciones del equipo que el generador respeta: **Círculo queda fuera** (marcado
 para eliminar) e **Italmotors queda dentro** con Talca y Linares (marcado para agregar).
 
-Un reclamo cuya serie, variante, concesionario o sucursal no exista en el catálogo se rechaza con 400.
-Es lo que impide que a Zoho llegue un modelo inventado o mal escrito.
+**El catálogo canoniza, no bloquea.** Si el valor existe, se reemplaza por el del catálogo —así a Zoho
+llega `LA FLORIDA` y no `La Florida - Vicuña Mackenna 9085`. Si no existe, **viaja tal cual y queda una
+advertencia**.
+
+El formulario es la fuente: si ofrece una opción, es legítima, y el desactualizado es el Excel. Perder
+un reclamo por esa diferencia es peor que aceptar un valor sin canonizar. Las advertencias se van
+juntando y muestran qué hay que alinear.
 
 ## Desajustes con los campos actuales de GHL
 

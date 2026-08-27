@@ -122,7 +122,8 @@ export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos
       // asi GHL distingue "no te entendi" de "te entendi y Zoho no respondio".
       // Las advertencias no bloquean: viajan para que el dato raro se pueda
       // corregir despues, en vez de perderse junto con el reclamo.
-      const avisos = advertencias(reclamo);
+      // Se juntan los dos origenes: formato dudoso y valor fuera del catalogo.
+      const avisos = [...ingesta.avisos, ...advertencias(reclamo)];
       const mgapi = {
         estado: 'procesado',
         interpretado: resumenInterpretado(reclamo),
