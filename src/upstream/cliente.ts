@@ -1,6 +1,6 @@
 import { entorno } from '../env.ts';
 import type { Reclamo } from '../schemas/reclamo.ts';
-import { datosDeContacto, mapearAZoho } from './zoho.ts';
+import { mapearAZoho } from './zoho.ts';
 import { invalidarCredencial, obtenerCredencial } from './zoho-auth.ts';
 
 export type ResultadoUpstream =
@@ -47,8 +47,8 @@ export function reiniciarPresupuesto(): void {
 /** Marca interna para reconocer un token rechazado sin repetir el numero suelto. */
 const TOKEN_RECHAZADO = 'estado 401';
 
-/** Lo que viaja a Zoho: el caso como argumento y los datos de contacto como cuerpo. */
-type EnvioAZoho = { caso: string; cuerpo: string };
+/** Lo que viaja a Zoho: el cuerpo ya armado segun su especificacion. */
+type EnvioAZoho = { cuerpo: string };
 
 /** Codigos de Zoho que no mejoran por reintentar: el dato esta mal, no el momento. */
 const CODIGOS_DEFINITIVOS = new Set(['INVALID_DATA', 'MANDATORY_NOT_FOUND', 'INVALID_URL_PATTERN']);
@@ -158,12 +158,12 @@ async function intentarEnvio(
     };
   }
 
-  // La funcion de Zoho recibe el caso como argumento, no como cuerpo. Mandarlo
-  // en el cuerpo es lo que dejaba el argumento vacio y hacia fallar su get().
+  // La especificacion de Zoho pide el caso dentro del cuerpo, como objeto
+  // anidado bajo "case". Mandarlo como parametro de la URL dejaba ese objeto
+  // vacio, y la funcion fallaba al hacer get() sobre nada.
   const url = new URL(entorno.UPSTREAM_URL as string);
 
   url.searchParams.set('auth_type', 'oauth');
-  url.searchParams.set(entorno.ZOHO_ARGUMENTO_CASO, envio.caso);
 
   try {
     const respuesta = await fetch(url, {
@@ -227,8 +227,7 @@ export async function enviarReclamo(
   }
 
   const envio: EnvioAZoho = {
-    caso: JSON.stringify(mapearAZoho(reclamo)),
-    cuerpo: JSON.stringify(datosDeContacto(reclamo)),
+    cuerpo: JSON.stringify({ [entorno.ZOHO_ARGUMENTO_CASO]: mapearAZoho(reclamo) }),
   };
 
   if (entorno.ZOHO_ESPERA_MS > 0) await esperar(entorno.ZOHO_ESPERA_MS);
