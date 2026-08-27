@@ -84,23 +84,43 @@ describe('validacion de entrada', () => {
     assert.equal(respuesta.json().error, 'entrada_invalida');
   });
 
-  test('RUT con digito verificador invalido se rechaza', async () => {
+  test('un RUT con digito verificador malo entra igual, con aviso', async () => {
+    reiniciarPresupuesto();
+    respuestaSimulada = { ok: true, datos: {} };
+
     const respuesta = await pedir({
       ...reclamoValido,
       contacto: { ...reclamoValido.contacto, rut: '12.345.678-9' },
     });
 
-    assert.equal(respuesta.statusCode, 400);
-    assert.ok(respuesta.json().campos.some((campo: { campo: string }) => campo.campo === 'rut'));
+    // Rechazarlo significaba perder el reclamo por un error de tipeo.
+    assert.equal(respuesta.statusCode, 200);
+    assert.ok(
+      respuesta.json().mgapi.advertencias.some((a: string) => a.includes('modulo 11')),
+      'el dato raro se avisa en vez de bloquear',
+    );
   });
 
-  test('patente con formato invalido se rechaza', async () => {
+  test('una patente fuera de formato entra igual, con aviso', async () => {
+    reiniciarPresupuesto();
+    respuestaSimulada = { ok: true, datos: {} };
+
     const respuesta = await pedir({
       ...reclamoValido,
-      vehiculo: { ...reclamoValido.vehiculo, patente_del_vehculo: '123456' },
+      vehiculo: { ...reclamoValido.vehiculo, patente_del_vehculo: 'ABC123' },
     });
 
-    assert.equal(respuesta.statusCode, 400);
+    assert.equal(respuesta.statusCode, 200);
+    assert.ok(respuesta.json().mgapi.advertencias.some((a: string) => a.includes('patente')));
+  });
+
+  test('un campo obligatorio vacio si se rechaza', async () => {
+    const respuesta = await pedir({
+      ...reclamoValido,
+      contacto: { ...reclamoValido.contacto, rut: '' },
+    });
+
+    assert.equal(respuesta.statusCode, 400, 'ausente no es lo mismo que mal escrito');
   });
 
   test('un cuerpo sobre 32 KB se rechaza con 413', async () => {

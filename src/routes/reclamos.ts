@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { verificarClave, verificarFirma } from '../security/autenticacion.ts';
 import { estaBloqueada, ipPermitida, limpiarFallos, registrarFallo } from '../security/perimetro.ts';
-import { resumenInterpretado } from '../schemas/reclamo.ts';
+import { advertencias, resumenInterpretado } from '../schemas/reclamo.ts';
 import { formaDelCuerpo, procesarPayloadGhl } from '../schemas/ingesta-ghl.ts';
 import { interpretarRespuestaZoho, mapearAZoho } from '../upstream/zoho.ts';
 import { consumirPresupuesto } from '../upstream/cliente.ts';
@@ -120,7 +120,21 @@ export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos
       const idCorrelacion = String(peticion.id);
       // Lo que mgAPI resolvio. Viaja en toda respuesta, incluso si Zoho falla:
       // asi GHL distingue "no te entendi" de "te entendi y Zoho no respondio".
-      const mgapi = { estado: 'procesado', interpretado: resumenInterpretado(reclamo) };
+      // Las advertencias no bloquean: viajan para que el dato raro se pueda
+      // corregir despues, en vez de perderse junto con el reclamo.
+      const avisos = advertencias(reclamo);
+      const mgapi = {
+        estado: 'procesado',
+        interpretado: resumenInterpretado(reclamo),
+        ...(avisos.length > 0 ? { advertencias: avisos } : {}),
+      };
+
+      if (avisos.length > 0) {
+        peticion.log.warn(
+          { idCorrelacion: String(peticion.id), advertencias: avisos },
+          'reclamo_aceptado_con_advertencias',
+        );
+      }
       // Con "completa" se le devuelve a GHL la respuesta de Zoho tal cual llego.
       const reenviarRespuesta = entorno.ZOHO_RESPUESTA_A_GHL === 'completa';
 

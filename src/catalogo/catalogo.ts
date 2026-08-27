@@ -125,7 +125,14 @@ function resolverOpcion(texto: string, opciones: string[]): string | undefined {
 
   if (exacta) return exacta;
 
-  const parciales = opciones.filter((opcion) => normalizar(opcion).includes(buscado));
+  // La coincidencia se busca en ambos sentidos. El formulario suele traer el
+  // valor del catalogo con algo agregado -"La Florida - Vicuña Mackenna 9085"
+  // frente a "LA FLORIDA"- y mirar en un solo sentido dejaba fuera ese caso.
+  const parciales = opciones.filter((opcion) => {
+    const candidato = normalizar(opcion);
+
+    return candidato.includes(buscado) || buscado.includes(candidato);
+  });
 
   return parciales.length === 1 ? parciales[0] : undefined;
 }
