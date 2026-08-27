@@ -15,7 +15,7 @@ function procesar(payload: unknown) {
   const resultado = procesarPayloadGhl(payload);
 
   return resultado.ok
-    ? { ok: true as const, zoho: mapearAZoho(resultado.reclamo) }
+    ? { ok: true as const, zoho: mapearAZoho(resultado.reclamo), canonico: resultado.canonico }
     : { ok: false as const, campos: resultado.errores.map((e) => e.campo) };
 }
 
@@ -70,13 +70,23 @@ describe('seleccion por nombre', () => {
 
   test('el modelo se reconoce aunque venga escrito distinto', () => {
     const resultado = procesar(
-      conCambios({
-        vehiculo: { ...base.vehiculo, modelo_del_auto: 'mg 4' },
-      }),
+      conCambios({ vehiculo: { ...base.vehiculo, modelo_del_auto: 'mg 4' } }),
     );
 
     assert.ok(resultado.ok);
-    assert.equal(resultado.zoho.cf_series, 'MG4');
+    // Por defecto viaja lo que escribio el formulario; el catalogo solo informa.
+    assert.equal(resultado.zoho.cf_series, 'mg 4');
+    assert.equal(resultado.canonico.serie, 'MG4');
+  });
+
+  test('con la canonizacion encendida viaja el valor del catalogo', () => {
+    const resultado = procesarPayloadGhl(
+      structuredClone(conCambios({ vehiculo: { ...base.vehiculo, modelo_del_auto: 'mg 4' } })),
+      true,
+    );
+
+    assert.ok(resultado.ok);
+    assert.equal(mapearAZoho(resultado.reclamo).cf_series, 'MG4');
   });
 });
 

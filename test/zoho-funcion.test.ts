@@ -140,6 +140,36 @@ describe('errores que Zoho informa con codigo de exito', () => {
     assert.equal(resultado.reintentable, true, 'queda en cola');
   });
 
+  test('una funcion que falla no se da por entregada, aunque el codigo sea success', async () => {
+    // Zoho informa que ejecuto la funcion; el error de la funcion viene adentro.
+    respuestaFuncion = {
+      code: 'success',
+      message: 'function executed successfully',
+      details: {
+        output: JSON.stringify({
+          status: '1',
+          errorMsg: "System exception: Error at line : 23, Value is empty and 'get' function cannot be applied",
+          'case id': '',
+        }),
+      },
+    };
+
+    const resultado = await enviarReclamo(reclamo, 'correlacion-8');
+
+    assert.equal(resultado.ok, false, 'el caso nunca se creo: no es una entrega');
+    assert.equal(resultado.codigoZoho, 'FUNCION_FALLO');
+    assert.equal(resultado.reintentable, false);
+  });
+
+  test('una funcion que termina bien si se acepta', async () => {
+    respuestaFuncion = {
+      code: 'success',
+      details: { output: JSON.stringify({ status: '0', 'case id': '12345' }) },
+    };
+
+    assert.ok((await enviarReclamo(reclamo, 'correlacion-9')).ok);
+  });
+
   test('una respuesta sin codigo se acepta', async () => {
     respuestaFuncion = { folio: 'F-2' };
 

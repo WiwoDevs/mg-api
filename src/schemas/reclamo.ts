@@ -111,7 +111,13 @@ export type Reclamo = z.infer<typeof esquemaReclamo>;
 
 export type ErrorCampo = { campo: string; mensaje: string };
 
-export type ResultadoCatalogo = { reclamo: Reclamo; avisos: string[] };
+export type ResultadoCatalogo = {
+  /** Lo que viaja a Zoho. */
+  reclamo: Reclamo;
+  /** Los cuatro valores como los nombra el catalogo, para mostrarlos. */
+  canonico: Record<string, string>;
+  avisos: string[];
+};
 
 /**
  * Reemplaza serie, variante, concesionario y sucursal por su valor canonico
@@ -123,8 +129,9 @@ export type ResultadoCatalogo = { reclamo: Reclamo; avisos: string[] };
  * reclamo por esa diferencia es peor que aceptar un valor sin canonizar.
  *
  * @param reclamo reclamo que ya paso el esquema de formato
+ * @param canonizar reemplaza los valores por los del catalogo antes de enviarlos
  */
-export function resolverCatalogo(reclamo: Reclamo): ResultadoCatalogo {
+export function resolverCatalogo(reclamo: Reclamo, canonizar = false): ResultadoCatalogo {
   const avisos: string[] = [];
 
   const modelo = buscarSerie(reclamo.vehiculo.serie);
@@ -151,19 +158,25 @@ export function resolverCatalogo(reclamo: Reclamo): ResultadoCatalogo {
     );
   }
 
+  const canonico = {
+    serie: modelo?.serie ?? reclamo.vehiculo.serie,
+    variante: variante ?? reclamo.vehiculo.variante,
+    concesionario: concesionario?.nombre ?? reclamo.concesionario.nombre,
+    sucursal: sucursal ?? reclamo.concesionario.sucursal,
+  };
+
+  // La funcion de Zoho se escribio contra los valores del formulario. Cambiarselos
+  // por los del catalogo le entrega textos que nunca vio, asi que por defecto
+  // viaja lo que mando el formulario y el valor del catalogo solo se informa.
+  if (!canonizar) return { reclamo, canonico, avisos };
+
   return {
     avisos,
+    canonico,
     reclamo: {
       ...reclamo,
-      vehiculo: {
-        ...reclamo.vehiculo,
-        serie: modelo?.serie ?? reclamo.vehiculo.serie,
-        variante: variante ?? reclamo.vehiculo.variante,
-      },
-      concesionario: {
-        nombre: concesionario?.nombre ?? reclamo.concesionario.nombre,
-        sucursal: sucursal ?? reclamo.concesionario.sucursal,
-      },
+      vehiculo: { ...reclamo.vehiculo, serie: canonico.serie, variante: canonico.variante },
+      concesionario: { nombre: canonico.concesionario, sucursal: canonico.sucursal },
     },
   };
 }
