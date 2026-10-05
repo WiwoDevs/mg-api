@@ -140,7 +140,7 @@ type ResultadoIngesta =
   | { ok: false; errores: ErrorCampo[] };
 
 /**
- * Saca el reclamo de la envoltura {"body": "<json>"}.
+ * Saca el reclamo de la envoltura {"body": "<json>"} o {"body": {...}}.
  *
  * GHL envuelve asi el cuerpo cuando el JSON se carga en su seccion de pares
  * clave/valor en vez de en el cuerpo crudo, y en ese caso ignora el cuerpo
@@ -153,6 +153,12 @@ function desenvolver(cuerpo: unknown): unknown {
   if (typeof cuerpo !== 'object' || cuerpo === null) return cuerpo;
 
   const envoltura = (cuerpo as { body?: unknown }).body;
+
+  // Variante ya como objeto: solo si "body" es la unica clave, para no tragarse
+  // un campo llamado body dentro de un payload normal.
+  if (typeof envoltura === 'object' && envoltura !== null && Object.keys(cuerpo).length === 1) {
+    return envoltura;
+  }
 
   if (typeof envoltura !== 'string') return cuerpo;
 

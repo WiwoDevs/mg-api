@@ -68,7 +68,7 @@ const esquemaEntorno = z.object({
   // Espera antes de llamar a la funcion. El flujo anterior en GHL la necesitaba;
   // aqui probablemente no, porque el token se espera de verdad. Ver docs/07.
   ZOHO_ESPERA_MS: z.coerce.number().int().min(0).max(30_000).default(0),
-  UPSTREAM_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  UPSTREAM_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
   UPSTREAM_PRESUPUESTO_DIARIO: z.coerce.number().int().positive().default(1000),
 
   // Cola de reintentos

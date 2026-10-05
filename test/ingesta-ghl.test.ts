@@ -172,6 +172,13 @@ describe('envoltura de GHL', () => {
     assert.equal(resultado.zoho.cf_model, 'MG 4 XPOWER');
   });
 
+  test('acepta el reclamo envuelto en {"body": {...}} como objeto', () => {
+    const resultado = procesar({ body: base });
+
+    assert.ok(resultado.ok);
+    assert.equal(resultado.zoho.cf_series, 'MG4');
+  });
+
   test('sigue aceptando el cuerpo directo, sin envoltura', () => {
     const resultado = procesar(base);
 
