@@ -172,6 +172,17 @@ describe('envoltura de GHL', () => {
     assert.equal(resultado.zoho.cf_model, 'MG 4 XPOWER');
   });
 
+  test('tolera saltos de linea y tabulaciones crudos dentro del texto', () => {
+    // El texto del usuario llega sin escapar y rompe el JSON estricto.
+    const crudo = JSON.stringify(base).replace(
+      'El vehiculo presenta',
+      'Primera linea\nSegunda\tlinea. El vehiculo presenta',
+    );
+    const resultado = procesar({ body: crudo });
+
+    assert.ok(resultado.ok);
+  });
+
   test('acepta el reclamo envuelto en {"body": {...}} como objeto', () => {
     const resultado = procesar({ body: base });
 

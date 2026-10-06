@@ -163,7 +163,9 @@ function desenvolver(cuerpo: unknown): unknown {
   if (typeof envoltura !== 'string') return cuerpo;
 
   try {
-    return JSON.parse(envoltura);
+    // GHL pega el texto del usuario sin escapar: saltos de linea y tabulaciones
+    // crudos dentro de un string rompen el JSON. Se cambian por espacios.
+    return JSON.parse(envoltura.replace(/[\x00-\x1F\x7F]/g, ' '));
   } catch {
     // No era JSON: se devuelve tal cual para que el esquema explique el error.
     return cuerpo;
