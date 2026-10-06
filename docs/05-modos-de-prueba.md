@@ -206,3 +206,24 @@ Con esto no hace falta ni una credencial de Zoho para levantar el servicio.
 
 Con el payload real en mano, lo que sigue es el mapa de campos: de qué campo de GHL sale cada dato del
 reclamo, cómo se limpia, y qué se descarta. Todo lo que no esté en ese mapa no viaja a Zoho.
+
+## Bitácora de ejecuciones
+
+A diferencia del diagnóstico de entrada, esta siempre está activa: anota **cada** llamada a
+`POST /v1/reclamos` —éxito, rechazo, clave mala, JSON roto o error interno— con fecha, IP, HTTP,
+resultado, duración y lo que respondió Zoho. **No guarda cuerpos ni datos del reclamante**, así que no
+necesita cifrado ni apagarse. Se purga sola (`EJECUCIONES_MAXIMO`, `EJECUCIONES_RETENCION_DIAS`).
+
+```bash
+# Todo lo reciente, con resumen por resultado
+curl -s -H "X-Mgapi-Key: $MGAPI_KEY" https://<DOMINIO>/v1/ejecuciones | jq
+
+# Solo lo que no salió bien
+curl -s -H "X-Mgapi-Key: $MGAPI_KEY" "https://<DOMINIO>/v1/ejecuciones?fallas=true&limite=50" | jq
+
+# Un resultado concreto: reclamo_rechazado, entrada_invalida, no_autorizado, ...
+curl -s -H "X-Mgapi-Key: $MGAPI_KEY" "https://<DOMINIO>/v1/ejecuciones?resultado=reclamo_rechazado" | jq
+```
+
+Cada fila trae `idCorrelacion`, el mismo que recibe GHL en la respuesta y que aparece en el log.
+Resultados exitosos: `recibido`, `simulado`, `encolado`; el resto cuenta como falla.

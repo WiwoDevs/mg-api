@@ -7,12 +7,30 @@ import { interpretarRespuestaZoho, mapearAZoho } from '../upstream/zoho.ts';
 import { consumirPresupuesto } from '../upstream/cliente.ts';
 import { entorno } from '../env.ts';
 import type { ColaReintentos } from '../cola/cola.ts';
+import { acotar } from '../diagnostico/ejecuciones.ts';
+import type { RegistroEjecuciones } from '../diagnostico/ejecuciones.ts';
 import type { RegistroDiagnostico } from '../diagnostico/registro.ts';
 import type { Reclamo } from '../schemas/reclamo.ts';
 import type { ResultadoUpstream } from '../upstream/cliente.ts';
 
+declare module 'fastify' {
+  interface FastifyRequest {
+    /** Lo que la ruta resolvio, para la bitacora. Sin datos del reclamante. */
+    ejecucion: { resultado: string; detalle: Record<string, unknown> } | null;
+  }
+}
+
+/** Resultado por defecto cuando la ruta no llego a decidir uno (rechazos previos, errores). */
+const RESULTADO_POR_ESTADO: Record<number, string> = {
+  400: 'solicitud_invalida',
+  401: 'no_autorizado',
+  415: 'tipo_no_soportado',
+  429: 'demasiadas_solicitudes',
+};
+
 export type DependenciasReclamos = {
   cola: ColaReintentos;
+  ejecuciones: RegistroEjecuciones;
   diagnostico?: RegistroDiagnostico;
   enviar: (reclamo: Reclamo, idCorrelacion: string) => Promise<ResultadoUpstream>;
 };
@@ -21,7 +39,7 @@ export type DependenciasReclamos = {
  * Ruta de ingreso de reclamos. Todo lo que entra aqui esta autenticado,
  * validado de forma estricta y nunca se registra en los logs.
  */
-export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos): FastifyPluginAsync {
+export function rutaReclamos({ cola, enviar, diagnostico, ejecuciones }: DependenciasReclamos): FastifyPluginAsync {
   return async function registrar(app: FastifyInstance): Promise<void> {
     // Primera barrera, antes de leer el cuerpo: a un desconocido no se le parsea nada.
     app.addHook('onRequest', async (peticion, respuesta) => {
@@ -81,6 +99,52 @@ export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos
       }
     });
 
+    app.decorateRequest('ejecucion', null);
+
+    // Bitacora: toda respuesta de POST /reclamos deja una fila, incluidas las que
+    // se cortan antes de la ruta (clave mala, JSON roto) o terminan en error.
+    app.addHook('onResponse', async (peticion, respuesta) => {
+      if (peticion.method !== 'POST') return;
+
+      const estado = respuesta.statusCode;
+
+      try {
+        ejecuciones.registrar({
+          idCorrelacion: String(peticion.id),
+          ip: peticion.ip,
+          http: estado,
+          resultado:
+            peticion.ejecucion?.resultado ??
+            RESULTADO_POR_ESTADO[estado] ??
+            (estado >= 500 ? 'error_interno' : `http_${estado}`),
+          ms: Math.round(respuesta.elapsedTime),
+          detalle: peticion.ejecucion?.detalle ?? {},
+        });
+      } catch (error) {
+        // La bitacora nunca debe tumbar la respuesta: se avisa y se sigue.
+        peticion.log.error(
+          { idCorrelacion: String(peticion.id), codigo: error instanceof Error ? error.name : 'desconocido' },
+          'bitacora_ejecuciones_fallo',
+        );
+      }
+    });
+
+    // Lectura de la bitacora. Exige la misma clave que el ingreso.
+    // ?resultado=<nombre> filtra uno; ?fallas=true deja solo lo que no salio bien.
+    app.get('/ejecuciones', async (peticion, respuesta) => {
+      const consulta = peticion.query as { resultado?: string; fallas?: string; limite?: string };
+      const limite = Math.min(Math.max(Number.parseInt(consulta.limite ?? '', 10) || 100, 1), 1000);
+
+      return respuesta.send({
+        resumen: ejecuciones.resumen(),
+        ejecuciones: ejecuciones.leer({
+          resultado: consulta.resultado,
+          soloFallas: consulta.fallas === 'true',
+          limite,
+        }),
+      });
+    });
+
     // Lectura de lo que se rechazo. Exige la misma clave que el ingreso.
     app.get('/diagnostico', async (peticion, respuesta) => {
       if (!diagnostico) {
@@ -113,6 +177,11 @@ export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos
         });
 
         // Se devuelven nombres de campo y motivo, nunca el valor recibido.
+        peticion.ejecucion = {
+          resultado: 'entrada_invalida',
+          detalle: { forma, campos: ingesta.errores },
+        };
+
         return respuesta.code(400).send({ error: 'entrada_invalida', forma, campos: ingesta.errores });
       }
 
@@ -144,13 +213,18 @@ export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos
 
       if (!consumirPresupuesto()) {
         peticion.log.error({ idCorrelacion }, 'presupuesto_diario_agotado');
+        peticion.ejecucion = { resultado: 'presupuesto_agotado', detalle: { avisos } };
 
         return respuesta.code(429).send({ error: 'presupuesto_agotado' });
       }
 
       const resultado = await enviar(reclamo, idCorrelacion);
 
+      const base = { avisos, interpretado: mgapi.interpretado };
+
       if (resultado.ok && resultado.simulado) {
+        peticion.ejecucion = { resultado: 'simulado', detalle: base };
+
         // Modo sin Zoho: se devuelve lo que se le habria enviado, para poder
         // revisar el resultado de la validacion y la limpieza desde GHL.
         return respuesta.code(200).send({
@@ -164,6 +238,11 @@ export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos
 
       if (resultado.ok) {
         const zoho = interpretarRespuestaZoho(resultado.datos);
+
+        peticion.ejecucion = {
+          resultado: 'recibido',
+          detalle: { ...base, zoho: { codigo: zoho.codigo, detalle: acotar(JSON.stringify(zoho.detalle)) } },
+        };
 
         return respuesta.code(200).send({
           estado: 'recibido',
@@ -179,6 +258,13 @@ export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos
       }
 
       if (!resultado.reintentable) {
+        peticion.ejecucion = {
+          resultado: 'reclamo_rechazado',
+          detalle: {
+            ...base,
+            zoho: { codigo: resultado.codigoZoho ?? 'sin_codigo', detalle: acotar(resultado.detalle) },
+          },
+        };
         peticion.log.warn({ idCorrelacion, detalle: resultado.detalle }, 'reclamo_rechazado_por_api_externa');
 
         return respuesta.code(422).send({
@@ -197,6 +283,10 @@ export function rutaReclamos({ cola, enviar, diagnostico }: DependenciasReclamos
       }
 
       cola.encolar(reclamo, idCorrelacion);
+      peticion.ejecucion = {
+        resultado: 'encolado',
+        detalle: { ...base, motivo: acotar(resultado.detalle) },
+      };
       peticion.log.warn({ idCorrelacion, detalle: resultado.detalle }, 'api_externa_no_disponible');
 
       return respuesta.code(202).send({

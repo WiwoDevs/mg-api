@@ -88,6 +88,13 @@ const esquemaEntorno = z.object({
   DIAGNOSTICO_MAXIMO: z.coerce.number().int().positive().max(500).default(50),
   DIAGNOSTICO_RETENCION_HORAS: z.coerce.number().int().positive().default(24),
 
+  // Bitacora de ejecuciones: una fila por llamada a /v1/reclamos, sin datos
+  // personales, para no perder las que fallan. Se lee en GET /v1/ejecuciones.
+  // Sin archivo, se guarda junto a la cola.
+  EJECUCIONES_ARCHIVO: z.string().optional(),
+  EJECUCIONES_MAXIMO: z.coerce.number().int().positive().default(5_000),
+  EJECUCIONES_RETENCION_DIAS: z.coerce.number().int().positive().default(30),
+
   // Modo captura: endpoint abierto y temporal para descubrir que manda GHL.
   // Se apaga solo tras CAPTURA_MAXIMA peticiones. Ver docs/05-modos-de-prueba.md
   MODO_CAPTURA: booleano,

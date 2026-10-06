@@ -1,10 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { dirname, join } from 'node:path';
 import Fastify, { LogController } from 'fastify';
 import type { FastifyError, FastifyInstance } from 'fastify';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { claveCifradoCola, entorno } from './env.ts';
 import { ColaReintentos } from './cola/cola.ts';
+import { RegistroEjecuciones } from './diagnostico/ejecuciones.ts';
 import { RegistroDiagnostico } from './diagnostico/registro.ts';
 import { allowlistActiva } from './security/perimetro.ts';
 import { rutaCaptura } from './routes/captura.ts';
@@ -76,6 +78,15 @@ export async function construirServidor(opciones: OpcionesServidor = {}): Promis
         retencionHoras: entorno.DIAGNOSTICO_RETENCION_HORAS,
       }))
     : undefined;
+
+  // Siempre activa: no guarda datos personales, solo el resultado de cada llamada.
+  const ejecuciones =
+    opciones.ejecuciones ??
+    new RegistroEjecuciones({
+      archivo: entorno.EJECUCIONES_ARCHIVO ?? join(dirname(entorno.COLA_ARCHIVO), 'ejecuciones.sqlite'),
+      maximo: entorno.EJECUCIONES_MAXIMO,
+      retencionDias: entorno.EJECUCIONES_RETENCION_DIAS,
+    });
 
   const app = Fastify({
     // Solo se cree la cabecera X-Forwarded-For si viene de Caddy. Con 'true'
@@ -164,7 +175,7 @@ export async function construirServidor(opciones: OpcionesServidor = {}): Promis
 
   app.get('/salud', async () => ({ estado: 'ok', pendientes: cola.pendientes() }));
 
-  await app.register(rutaReclamos({ cola, enviar, diagnostico }), { prefix: '/v1' });
+  await app.register(rutaReclamos({ cola, enviar, diagnostico, ejecuciones }), { prefix: '/v1' });
 
   if (diagnostico) {
     app.log.warn(
@@ -197,6 +208,7 @@ export async function construirServidor(opciones: OpcionesServidor = {}): Promis
   app.addHook('onClose', async () => {
     cola.cerrar();
     diagnostico?.cerrar();
+    ejecuciones.cerrar();
   });
 
   return app;
